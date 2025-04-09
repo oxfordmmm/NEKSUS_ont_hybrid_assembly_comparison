@@ -2,7 +2,7 @@
 
 ## Summary 
 
-This repo contains the extended Methods (below) and Nextflow pipeline (assembly_comparison_pipeline_v2.tar.gz) used to compare Nanopore long-read only with hybrid bacterial genome assembly for Enterobacterales. This analysis was a pilot study for the NEKSUS study (National *E. coli* and *Klebsiella* Bloodstream Infection (BSI) and Carbapenemase-Producing Enterobacterales (CPE) UK Surveillance Study), and was presented at the 2025 Congress of the European Society of  Clinical Microbiology and Infectious Diseases as an ePoster. 
+This repo contains the extended Methods (below) and Nextflow pipeline (nanopore_assembly_comparison_pipeline_v2.tar.gz) used to compare Nanopore long-read only with hybrid bacterial genome assembly for Enterobacterales. This analysis was a pilot study for the NEKSUS study (National *E. coli* and *Klebsiella* Bloodstream Infection (BSI) and Carbapenemase-Producing Enterobacterales (CPE) UK Surveillance Study), and was presented at the 2025 Congress of the European Society of  Clinical Microbiology and Infectious Diseases as an ePoster. 
 
 
 ## Contents
@@ -20,7 +20,7 @@ DNA extraction, library preparations, and long- and short-read sequencing were c
 
 ### Bioinformatics 
 #### Basecalling
-Long-read sequences were basecalled with Dorado (v5.0.0 super high accuracy simplex DNA models). The genome assembly/annotation pipeline (assembly_comparison_pipeline_v2.tar.gz) was written in Nextflow (v24.04.3) based on an earlier Nanopore assembly comparison<sup>1</sup>. 
+Long-read sequences were basecalled with Dorado (v5.0.0 super high accuracy simplex DNA models). The genome assembly/annotation pipeline (nanopore_assembly_comparison_pipeline_v2.tar.gz) was written in Nextflow (v24.04.3) based on an earlier Nanopore assembly comparison<sup>1</sup>. 
 #### Quality control
 Raw-read and assembly quality was assessed with SeqKit<sup>2</sup> v2.9.0.
 #### Subsampling
