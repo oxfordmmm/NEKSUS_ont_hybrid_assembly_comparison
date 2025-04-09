@@ -2,7 +2,7 @@
 
 ## Summary 
 
-This repo contains the extended Methods (below) and Nextflow pipeline (assembly_comparison_pipeline_v2.tar.gz) used to compare Nanopore long-read only with hybrid bacterial genome assembly for Enterobacterales. This analysis was a pilot study for the NEKSUS study (National *E. coli* and *Klebsiella* Bloodstream Infection and CPE Surveillance Study), and was presented at the 2025 Congress of the European Society of  Clinical Microbiology and Infectious Diseases as an ePoster. 
+This repo contains the extended Methods (below) and Nextflow pipeline (assembly_comparison_pipeline_v2.tar.gz) used to compare Nanopore long-read only with hybrid bacterial genome assembly for Enterobacterales. This analysis was a pilot study for the NEKSUS study (National *E. coli* and *Klebsiella* Bloodstream Infection and CPE UK Surveillance Study), and was presented at the 2025 Congress of the European Society of  Clinical Microbiology and Infectious Diseases as an ePoster. 
 
 
 ## Contents
@@ -24,28 +24,28 @@ DNA extraction, library preparations, and long- and short-read sequencing were c
 ### Bioinformatics 
 
 #### Basecalling
-Long-read sequences were basecalled with Dorado (v5.0.0 super high accuracy (sup) simplex DNA models). The genome assembly/annotation pipeline (assembly_comparison_pipeline_v2.tar.gz) was written in Nextflow (v24.04.3) based on an earlier Nanopore assembly comparison (Sanderson et al., 2023; 2024). 
+Long-read sequences were basecalled with Dorado (v5.0.0 super high accuracy simplex DNA models). The genome assembly/annotation pipeline (assembly_comparison_pipeline_v2.tar.gz) was written in Nextflow (v24.04.3) based on an earlier Nanopore assembly comparison^1^. 
 
 #### Quality control
-Raw-read and assembly quality was assessed with SeqKit (v2.9.0).
+Raw-read and assembly quality was assessed with SeqKit^2^ v2.9.0.
 
 #### Subsampling
-Long-reads were subsampled to 60x using the built-in subsampling and genome size estimation scripts from Autocycler, and short-reads to 100x with Rasusa (v2.1.0). 
+Long-reads were subsampled to 60x using the built-in subsampling and genome size estimation scripts from Autocycler^3^ v0.2.1, and short-reads to 100x with Rasusa^4^ v2.1.0. 
 
 #### Assembly
-Genomes were assembled using three long-read only assemblers (Flye v2.9.5, Hybracter long v0.11.2, and the consensus assembler Autocycler v0.2.1), and three hybrid assemblers (Hybracter hybrid, Unicycler v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long, where each of the 4 assemblies per assembler was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
+Genomes were assembled using three long-read only assemblers (Flye^5^ v2.9.5, Hybracter^6^ long v0.11.2, and the consensus assembler Autocycler^3^ v0.2.1), and three hybrid assemblers (Hybracter^6^ hybrid, Unicycler^7^ v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long, where each of the 4 assemblies was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
 
 #### Polishing
 Three polishing modalities were investigated:
-- long-read polishing with one round of Medaka v2.0.1 with subsampled reads
-- long-read polishing with one round of Medaka v2.0.1 with a full-set of reads
-- short-read polishing with Polypolish v0.6.0 and Pypolca v0.3.1 
+- long-read polishing with one round of Medaka^8^ v2.0.1 with subsampled reads
+- long-read polishing with one round of Medaka^8^ v2.0.1 with a full-set of reads
+- short-read polishing with Polypolish^9^ v0.6.0 and Pypolca^10^ v0.3.1 
 
 
 #### Assembly evaluation
-Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from the MUMmer4 package (v4.0.0)), had the same replicon/Inc type assignment (PlasmidFinder v), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
+Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from MUMmer4^11^ v4.0.0), had the same replicon/Inc type assignment (PlasmidFinder^12^ v), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
 
-Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies using Pypolca, MLST assignment (mlst v2.23.0), and the recovery of key resistance and virulence genes (AMRFinderPlus v4.0.3 with the species flag inferred from Kraken2 (v2.1.3)).   
+Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies using Pypolca^10^, MLST assignment (mlst^13^ v2.23.0), and the recovery of key resistance and virulence genes (AMRFinderPlus^14^ v4.0.3 with the species flag inferred from Kraken2^15^ v2.1.3).   
   
   
 ### Statistical analysis and visualisation
@@ -65,3 +65,19 @@ This work was funded by the UK Health Security Agency (UKHSA) and supported by t
 Nagy, D., Pennetta, V., Rodger, G., Hopkins, K., Jones, C., The NEKSUS Study Group, Hopkins, S., Crook, D., Walker, A.S., Robotham, J., Hopkins, K.L., Ledda, A., Williams, D., Hope, R., Brown, C.S., Stoesser, N., Lipworth, S. (2025). *Nanopore long-read only genome assembly is complete and accurate for surveillance of Enterobacterales bloodstream infections in England.* [Conference ePoster]. ESCMID Global 2025, Vienna, Austria. https://registration.escmid.org//AbstractList.aspx?e=30&header=0&preview=1&aig=-1&ai=33860 
 
 ## References
+
+1. Sanderson, N. D., Hopkins, K. M. V., Colpus, M., Parker, M., Lipworth, S., Crook, D., & Stoesser, N. (2024). Evaluation of the accuracy of bacterial genome reconstruction with Oxford Nanopore R10.4.1 long-read-only sequencing. Microb Genom, 10(5). https://doi.org/10.1099/mgen.0.001246
+2. Shen W., Le S., Li Y., Hu F. (2016) SeqKit: A Cross-Platform and Ultrafast Toolkit for FASTA/Q File Manipulation. PLoS ONE 11(10): e0163962. https://doi.org/10.1371/journal.pone.0163962
+3. Wick RR. Autocycler. https://github.com/rrwick/Autocycler. 2025. doi:10.5281/zenodo.14642607
+4. Hall, M. B., (2022). Rasusa: Randomly subsample sequencing reads to a specified coverage. Journal of Open Source Software, 7(69), 3941, https://doi.org/10.21105/joss.03941
+5. Kolmogorov, M., Yuan, J., Lin, Y., & Pevzner, P. (2019). Assembly of Long Error-Prone Reads Using Repeat Graphs. Nature Biotechnology. https://doi.org/doi:10.1038/s41587-019-0072-8 
+6. Bouras, G., Houtak, G., Wick, R. R., Mallawaarachchi, V., Roach, M. J., Papudeshi, B., Judd, L. M., Sheppard, A. E., Edwards, R. A., & Vreugde, S. (2024). Hybracter: Enabling Scalable, Automated, Complete and Accurate Bacterial Genome Assemblies. bioRxiv. https://doi.org/10.1101/2023.12.12.571215 
+7. Wick R.R., Judd L.M., Gorrie C.L., Holt K.E. (2017). Unicycler: Resolving bacterial genome assemblies from short and long sequencing reads. PLOS Computational Biology 13(6): e1005595. https://doi.org/10.1371/journal.pcbi.1005595 
+8. Oxford Nanopore Technologies (ONT). Medaka, Github. https://github.com/nanoporetech/medaka. [Accessed 20/11/2024]
+9. Wick R.R., Holt K.E. (2022). Polypolish: Short-read polishing of long-read bacterial genome assemblies. PLOS Computational Biology 18(1): e1009802. https://doi.org/10.1371/journal.pcbi.1009802
+10. Bouras G., Judd L.M., Edwards R.A., Vreugde S., Stinear T.P., Wick R.R. (2024). How low can you go? Short-read polishing of Oxford Nanopore bacterial genome assemblies. Microbial Genomics. doi: https://doi.org/10.1099/mgen.0.001254.
+11. Marçais G, Delcher AL, Phillippy AM, Coston R, Salzberg SL, et al. (2018) MUMmer4: A fast and versatile genome alignment system. PLOS Computational Biology 14(1): e1005944. https://doi.org/10.1371/journal.pcbi.1005944
+12. Carattoli, A., Zankari, E., Garcia-Fernandez, A., Voldby Larsen, M., Lund, O., Villa, L., Moller Aarestrup, F., & Hasman, H. (2014). In silico detection and typing of plasmids using PlasmidFinder and plasmid multilocus sequence typing. 
+13. Seemann T., mlst Github https://github.com/tseemann/mlst [Accessed 20/11/2024]
+14. Feldgarden M., Brover V., Gonzalez-Escalona N., Frye J.G., Haendiges J., Haft D.H., Hoffmann M., Pettengill J.B., Prasad A.B., Tillman G.E., Tyson G.H., Klimke W. AMRFinderPlus and the Reference Gene Catalog facilitate examination of the genomic links among antimicrobial resistance, stress response, and virulence. Sci Rep. 2021 Jun 16;11(1):12728. doi: 10.1038/s41598-021-91456-0. PMID: 34135355; PMCID: PMC8208984.
+15. Wood, D.E., Lu, J. & Langmead, B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). https://doi.org/10.1186/s13059-019-1891-0
