@@ -52,20 +52,20 @@ Nagy, D., Pennetta, V., Rodger, G., Hopkins, K., Jones, C., The NEKSUS Study Gro
 
 ## References
 <sub>
-1. Sanderson, N. D., Hopkins, K. M. V., Colpus, M., Parker, M., Lipworth, S., Crook, D., & Stoesser, N. (2024). Evaluation of the accuracy of bacterial genome reconstruction with Oxford Nanopore R10.4.1 long-read-only sequencing. Microb Genom, 10(5). https://doi.org/10.1099/mgen.0.001246 <br>
-2. Shen, W., Le, S., Li, Y., Hu, F. (2016) SeqKit: A Cross-Platform and Ultrafast Toolkit for FASTA/Q File Manipulation. PLoS ONE 11(10): e0163962. https://doi.org/10.1371/journal.pone.0163962
-3. Wick, R.R. Autocycler. https://github.com/rrwick/Autocycler. 2025. doi:10.5281/zenodo.14642607
-4. Hall, M. B., (2022). Rasusa: Randomly subsample sequencing reads to a specified coverage. Journal of Open Source Software, 7(69), 3941, https://doi.org/10.21105/joss.03941
-5. Kolmogorov, M., Yuan, J., Lin, Y., & Pevzner, P. (2019). Assembly of Long Error-Prone Reads Using Repeat Graphs. Nature Biotechnology. https://doi.org/doi:10.1038/s41587-019-0072-8 
-6. Bouras, G., Houtak, G., Wick, R. R., Mallawaarachchi, V., Roach, M. J., Papudeshi, B., Judd, L. M., Sheppard, A. E., Edwards, R. A., & Vreugde, S. (2024). Hybracter: Enabling Scalable, Automated, Complete and Accurate Bacterial Genome Assemblies. bioRxiv. https://doi.org/10.1101/2023.12.12.571215 
-7. Wick, R.R., Judd, L.M., Gorrie, C.L., Holt, K.E. (2017). Unicycler: Resolving bacterial genome assemblies from short and long sequencing reads. PLOS Computational Biology 13(6): e1005595. https://doi.org/10.1371/journal.pcbi.1005595 
-8. Oxford Nanopore Technologies (ONT). Medaka, Github. https://github.com/nanoporetech/medaka. [Accessed 20/11/2024]
-9. Wick, R.R., Holt, K.E. (2022). Polypolish: Short-read polishing of long-read bacterial genome assemblies. PLOS Computational Biology 18(1): e1009802. https://doi.org/10.1371/journal.pcbi.1009802
-10. Bouras, G., Judd, L.M., Edwards, R.A., Vreugde, S., Stinear, T.P., Wick, R.R. (2024). How low can you go? Short-read polishing of Oxford Nanopore bacterial genome assemblies. Microbial Genomics. doi: https://doi.org/10.1099/mgen.0.001254.
-11. Marçais, G, Delcher, AL, Phillippy, AM, Coston, R, Salzberg, SL, et al. (2018) MUMmer4: A fast and versatile genome alignment system. PLOS Computational Biology 14(1): e1005944. https://doi.org/10.1371/journal.pcbi.1005944
-12. Carattoli, A., Zankari, E., Garcia-Fernandez, A., Voldby Larsen, M., Lund, O., Villa, L., Moller Aarestrup, F., & Hasman, H. (2014). In silico detection and typing of plasmids using PlasmidFinder and plasmid multilocus sequence typing. 
-13. Seemann, T., mlst Github https://github.com/tseemann/mlst [Accessed 20/11/2024]
-14. Feldgarden, M., Brover, V., Gonzalez-Escalona, N., Frye, J.G., Haendiges, J., Haft, D.H., Hoffmann, M., Pettengill, J.B., Prasad, A.B., Tillman, G.E., Tyson, G.H., Klimke, W. AMRFinderPlus and the Reference Gene Catalog facilitate examination of the genomic links among antimicrobial resistance, stress response, and virulence. Sci Rep. 2021 Jun 16;11(1):12728. doi: 10.1038/s41598-021-91456-0. PMID: 34135355; PMCID: PMC8208984.
-15. Wood, D.E., Lu, J. & Langmead, B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). https://doi.org/10.1186/s13059-019-1891-0
-16. R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/
+1. Sanderson, N. D., Hopkins, K. M. V., Colpus, M., Parker, M., Lipworth, S., Crook, D., & Stoesser, N. (2024). Evaluation of the accuracy of bacterial genome reconstruction with Oxford Nanopore R10.4.1 long-read-only sequencing. Microb Genom, 10(5). https://doi.org/10.1099/mgen.0.001246
+<br>2. Shen, W., Le, S., Li, Y., Hu, F. (2016) SeqKit: A Cross-Platform and Ultrafast Toolkit for FASTA/Q File Manipulation. PLoS ONE 11(10): e0163962. https://doi.org/10.1371/journal.pone.0163962
+<br>3. Wick, R.R. Autocycler. https://github.com/rrwick/Autocycler. 2025. doi:10.5281/zenodo.14642607 
+<br>4. Hall, M. B., (2022). Rasusa: Randomly subsample sequencing reads to a specified coverage. Journal of Open Source Software, 7(69), 3941, https://doi.org/10.21105/joss.03941
+<br>5. Kolmogorov, M., Yuan, J., Lin, Y., & Pevzner, P. (2019). Assembly of Long Error-Prone Reads Using Repeat Graphs. Nature Biotechnology. https://doi.org/doi:10.1038/s41587-019-0072-8 
+<br>6. Bouras, G., Houtak, G., Wick, R. R., Mallawaarachchi, V., Roach, M. J., Papudeshi, B., Judd, L. M., Sheppard, A. E., Edwards, R. A., & Vreugde, S. (2024). Hybracter: Enabling Scalable, Automated, Complete and Accurate Bacterial Genome Assemblies. bioRxiv. https://doi.org/10.1101/2023.12.12.571215 
+<br>7. Wick, R.R., Judd, L.M., Gorrie, C.L., Holt, K.E. (2017). Unicycler: Resolving bacterial genome assemblies from short and long sequencing reads. PLOS Computational Biology 13(6): e1005595. https://doi.org/10.1371/journal.pcbi.1005595 
+<br>8. Oxford Nanopore Technologies (ONT). Medaka, Github. https://github.com/nanoporetech/medaka. [Accessed 20/11/2024]
+<br>9. Wick, R.R., Holt, K.E. (2022). Polypolish: Short-read polishing of long-read bacterial genome assemblies. PLOS Computational Biology 18(1): e1009802. https://doi.org/10.1371/journal.pcbi.1009802
+<br>10. Bouras, G., Judd, L.M., Edwards, R.A., Vreugde, S., Stinear, T.P., Wick, R.R. (2024). How low can you go? Short-read polishing of Oxford Nanopore bacterial genome assemblies. Microbial Genomics. doi: https://doi.org/10.1099/mgen.0.001254.
+<br>11. Marçais, G, Delcher, AL, Phillippy, AM, Coston, R, Salzberg, SL, et al. (2018) MUMmer4: A fast and versatile genome alignment system. PLOS Computational Biology 14(1): e1005944. https://doi.org/10.1371/journal.pcbi.1005944
+<br>12. Carattoli, A., Zankari, E., Garcia-Fernandez, A., Voldby Larsen, M., Lund, O., Villa, L., Moller Aarestrup, F., & Hasman, H. (2014). In silico detection and typing of plasmids using PlasmidFinder and plasmid multilocus sequence typing. 
+<br>13. Seemann, T., mlst Github https://github.com/tseemann/mlst [Accessed 20/11/2024]
+<br>14. Feldgarden, M., Brover, V., Gonzalez-Escalona, N., Frye, J.G., Haendiges, J., Haft, D.H., Hoffmann, M., Pettengill, J.B., Prasad, A.B., Tillman, G.E., Tyson, G.H., Klimke, W. AMRFinderPlus and the Reference Gene Catalog facilitate examination of the genomic links among antimicrobial resistance, stress response, and virulence. Sci Rep. 2021 Jun 16;11(1):12728. doi: 10.1038/s41598-021-91456-0. PMID: 34135355; PMCID: PMC8208984.
+<br>15. Wood, D.E., Lu, J. & Langmead, B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). https://doi.org/10.1186/s13059-019-1891-0
+<br>16. R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/
 </sub>
