@@ -2,7 +2,7 @@
 
 ## Summary 
 
-This repo contains the extended Methods (below) and Nextflow pipeline (assembly_comparison_pipeline_v2.tar.gz) used to compare Nanopore long-read only with hybrid bacterial genome assembly for Enterobacterales. This analysis was a pilot study for the NEKSUS study (National *E. coli* and *Klebsiella* Bloodstream Infection and CPE UK Surveillance Study), and was presented at the 2025 Congress of the European Society of  Clinical Microbiology and Infectious Diseases as an ePoster. 
+This repo contains the extended Methods (below) and Nextflow pipeline (assembly_comparison_pipeline_v2.tar.gz) used to compare Nanopore long-read only with hybrid bacterial genome assembly for Enterobacterales. This analysis was a pilot study for the NEKSUS study (National *E. coli* and *Klebsiella* Bloodstream Infection (BSI) and Carbapenemase-Producing Enterobacterales (CPE) UK Surveillance Study), and was presented at the 2025 Congress of the European Society of  Clinical Microbiology and Infectious Diseases as an ePoster. 
 
 
 ## Contents
@@ -26,14 +26,14 @@ Raw-read and assembly quality was assessed with SeqKit<sup>2</sup> v2.9.0.
 #### Subsampling
 Long-reads were subsampled to 60x using the built-in subsampling and genome size estimation scripts from Autocycler<sup>3</sup> v0.2.1, and short-reads to 100x with Rasusa<sup>4</sup> v2.1.0. 
 #### Assembly
-Genomes were assembled using three long-read only assemblers (Flye<sup>5</sup> v2.9.5, Hybracter<sup>6</sup> long v0.11.2, and the consensus assembler Autocycler<sup>3</sup> v0.2.1), and three hybrid assemblers (Hybracter<sup>6</sup> hybrid, Unicycler<sup>7</sup> v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long, where each of the 4 assemblies was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
+Genomes were assembled using three long-read only assemblers (Flye<sup>5</sup> v2.9.5, Hybracter<sup>6</sup> long v0.11.2, and the consensus assembler Autocycler<sup>3</sup> v0.2.1), and three hybrid assemblers (Hybracter<sup>6</sup> hybrid, Unicycler<sup>7</sup> v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu v2.2, Flye, Raven v1.8.3, Miniasm v0.3, and Hybracter long, where each of the 4 assemblies was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
 #### Polishing
 Three polishing modalities were investigated:
 - long-read polishing with one round of Medaka<sup>8</sup> v2.0.1 with subsampled reads
-- long-read polishing with one round of Medaka<sup>8</sup> v2.0.1 with a full-set of reads
+- long-read polishing with one round of Medaka<sup>8</sup> with a full-set of reads
 - short-read polishing with Polypolish<sup>9</sup> v0.6.0 and Pypolca<sup>10</sup> v0.3.1 
 #### Assembly evaluation
-Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from MUMmer4<sup>11</sup> v4.0.0), had the same replicon/Inc type assignment (PlasmidFinder<sup>12</sup> v), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
+Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from MUMmer4<sup>11</sup> v4.0.0), had the same replicon/Inc type assignment (PlasmidFinder<sup>12</sup> v2.1.6), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
 
 Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies using Pypolca<sup>10</sup>, MLST assignment (mlst<sup>13</sup> v2.23.0), and the recovery of key resistance and virulence genes (AMRFinderPlus<sup>14</sup> v4.0.3 with the species flag inferred from Kraken2<sup>15</sup> v2.1.3).   
   
