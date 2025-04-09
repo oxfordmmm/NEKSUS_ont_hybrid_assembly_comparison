@@ -52,7 +52,7 @@ Nagy, D., Pennetta, V., Rodger, G., Hopkins, K., Jones, C., The NEKSUS Study Gro
 
 ## References
 <sub>
-1. Sanderson, N. D., Hopkins, K. M. V., Colpus, M., Parker, M., Lipworth, S., Crook, D., & Stoesser, N. (2024). Evaluation of the accuracy of bacterial genome reconstruction with Oxford Nanopore R10.4.1 long-read-only sequencing. Microb Genom, 10(5). https://doi.org/10.1099/mgen.0.001246
+1. Sanderson, N. D., Hopkins, K. M. V., Colpus, M., Parker, M., Lipworth, S., Crook, D., & Stoesser, N. (2024). Evaluation of the accuracy of bacterial genome reconstruction with Oxford Nanopore R10.4.1 long-read-only sequencing. Microb Genom, 10(5). https://doi.org/10.1099/mgen.0.001246 <br>
 2. Shen, W., Le, S., Li, Y., Hu, F. (2016) SeqKit: A Cross-Platform and Ultrafast Toolkit for FASTA/Q File Manipulation. PLoS ONE 11(10): e0163962. https://doi.org/10.1371/journal.pone.0163962
 3. Wick, R.R. Autocycler. https://github.com/rrwick/Autocycler. 2025. doi:10.5281/zenodo.14642607
 4. Hall, M. B., (2022). Rasusa: Randomly subsample sequencing reads to a specified coverage. Journal of Open Source Software, 7(69), 3941, https://doi.org/10.21105/joss.03941
