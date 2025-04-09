@@ -33,7 +33,7 @@ Raw-read and assembly quality was assessed with SeqKit (v2.9.0).
 Long-reads were subsampled to 60x using the built-in subsampling and genome size estimation scripts from Autocycler, and short-reads to 100x with Rasusa (v2.1.0). 
 
 #### Assembly
-Genomes were assembled using three long-read only assemblers (Flye v2.9.5, Hybracter long v0.11.2, and the consensus assembler Autocycler v0.2.1), and three hybrid assemblers (Hybracter hybrid, Unicycler v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long.
+Genomes were assembled using three long-read only assemblers (Flye v2.9.5, Hybracter long v0.11.2, and the consensus assembler Autocycler v0.2.1), and three hybrid assemblers (Hybracter hybrid, Unicycler v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long, where each of the 4 assemblies per assembler was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
 
 #### Polishing
 Three polishing modalities were investigated:
@@ -43,16 +43,11 @@ Three polishing modalities were investigated:
 
 
 #### Assembly evaluation
-Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. 
+Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from the MUMmer4 package (v4.0.0)), had the same replicon/Inc type assignment (PlasmidFinder v), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
 
-Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies (Pypolca), MLST assignment (mlst v2.23.0), and recovery of key genes (AMRFinderPlus v4.0.3 with the species flag inferred from Kraken2 (v2.1.3).). 
+Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies using Pypolca, MLST assignment (mlst v2.23.0), and the recovery of key resistance and virulence genes (AMRFinderPlus v4.0.3 with the species flag inferred from Kraken2 (v2.1.3)).   
   
   
-  
-  Dnadiff from MUMmer4 (v4.0.0) was used to align all assemblies against the Flye-Polypolish hybrid assembly (chosen as the “gold-standard”) for each isolate. mlst (v2.23.0) was used to identify multi locus sequence type (MLST). Key resistance, stress and virulence genes were identified using AMRFinder Plus (v4.0.3)
-
- 
- 
 ### Statistical analysis and visualisation
 
 Statistical analysis and visualisation were done in R (v4.4.1; R Core Team 2024). Proportions were compared with Fisher’s exact test, and counts with Wilcoxon signed-rank tests.
