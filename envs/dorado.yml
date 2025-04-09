@@ -1,6 +1,0 @@
-name: dorado
-channels:
-  - https://conda.anaconda.org/gurobi
-  - conda-forge
-  - bioconda
-prefix: /home/dot/miniforge3/envs/dorado
