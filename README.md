@@ -12,47 +12,33 @@ This repo contains the extended Methods (below) and Nextflow pipeline (assembly_
 - References
  
 ## Extended Methods
-
 ### Isolate collection
-
 9 English hospitals from 8 English regions were recruited through a partnership between the University of Oxford and UK Health Secuirty Agency (UKHSA). Consecutive bloodstream infection (BSI) and positive rectal Carbapenemase-Producing Enterobacterales (CPE) screening isolates were collected between October 2023 and March 2024. The first 92 Enterobacterales isolates collected, from 3 English regions, were included in the pilot analysis, predominantly *Escherichia coli* and *Klebsiella pneumoniae*. Isolate collection was part of routine clinical practice under existing UKHSA permissions for extended surveillance. Isolates were prepared by participating sites and shipped to Oxford, catalogued, and stored in brain-heart infusion (BHI) broth with 10% Glycerol at -70◦C unitl preparation for DNA extraction and sequencing by an external provider. 
 
 ### DNA extraction & sequencing
-
 DNA extraction, library preparations, and long- and short-read sequencing were conducted at GENEWIZ Germany GmbH (Leipzig, Germany). Briefly, DNA extracts were both long-read (PromethION using R10.4.1/kit 14 flowcells/chemistry [Oxford Nanopore Technologies]) and short-read sequenced (Illumina NovaSeq X Plus, 2x150 paired-end reads). 
 
 ### Bioinformatics 
-
 #### Basecalling
-Long-read sequences were basecalled with Dorado (v5.0.0 super high accuracy simplex DNA models). The genome assembly/annotation pipeline (assembly_comparison_pipeline_v2.tar.gz) was written in Nextflow (v24.04.3) based on an earlier Nanopore assembly comparison^1^. 
-
+Long-read sequences were basecalled with Dorado (v5.0.0 super high accuracy simplex DNA models). The genome assembly/annotation pipeline (assembly_comparison_pipeline_v2.tar.gz) was written in Nextflow (v24.04.3) based on an earlier Nanopore assembly comparison<sup>1</sup>. 
 #### Quality control
-Raw-read and assembly quality was assessed with SeqKit^2^ v2.9.0.
-
+Raw-read and assembly quality was assessed with SeqKit<sup>2</sup> v2.9.0.
 #### Subsampling
-Long-reads were subsampled to 60x using the built-in subsampling and genome size estimation scripts from Autocycler^3^ v0.2.1, and short-reads to 100x with Rasusa^4^ v2.1.0. 
-
+Long-reads were subsampled to 60x using the built-in subsampling and genome size estimation scripts from Autocycler<sup>3</sup> v0.2.1, and short-reads to 100x with Rasusa<sup>4</sup> v2.1.0. 
 #### Assembly
-Genomes were assembled using three long-read only assemblers (Flye^5^ v2.9.5, Hybracter^6^ long v0.11.2, and the consensus assembler Autocycler^3^ v0.2.1), and three hybrid assemblers (Hybracter^6^ hybrid, Unicycler^7^ v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long, where each of the 4 assemblies was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
-
+Genomes were assembled using three long-read only assemblers (Flye<sup>5</sup> v2.9.5, Hybracter<sup>6</sup> long v0.11.2, and the consensus assembler Autocycler<sup>3</sup> v0.2.1), and three hybrid assemblers (Hybracter<sup>6</sup> hybrid, Unicycler<sup>7</sup> v0.5.1 normal and bold modes). The input long-read assemblies used for Autocycler were 4 assemblies each of Canu, Flye, Raven, Miniasm, and Hybracter long, where each of the 4 assemblies was derived from an independently subsampled set of reads. The Flye an Hybracter long assemblies from the first subsampled reads set was used in downstream analyses.
 #### Polishing
 Three polishing modalities were investigated:
-- long-read polishing with one round of Medaka^8^ v2.0.1 with subsampled reads
-- long-read polishing with one round of Medaka^8^ v2.0.1 with a full-set of reads
-- short-read polishing with Polypolish^9^ v0.6.0 and Pypolca^10^ v0.3.1 
-
-
+- long-read polishing with one round of Medaka<sup>8</sup> v2.0.1 with subsampled reads
+- long-read polishing with one round of Medaka<sup>8</sup> v2.0.1 with a full-set of reads
+- short-read polishing with Polypolish<sup>9</sup> v0.6.0 and Pypolca<sup>10</sup> v0.3.1 
 #### Assembly evaluation
-Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from MUMmer4^11^ v4.0.0), had the same replicon/Inc type assignment (PlasmidFinder^12^ v), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
+Assembly completeness was assessed by the proportion of chromosomes and plasmids reconstructed. Chromosomes were defined as 'fully reconstructed' where a contig was >4Mb and fully circularised. Plasmids were either fully reconstructed, or partly reconstructed/misassembled. Fully reconstructed plasmids were defined as contigs that aligned to eachother (dnadiff from MUMmer4<sup>11</sup> v4.0.0), had the same replicon/Inc type assignment (PlasmidFinder<sup>12</sup> v), had the same circulairity (either all circular, or all linear) and were within 200bp in length of eachother, from at least 2 assemblers. Misassembled plasmids were defined as fully reconstructed, but where one of the Inc typ, circularity, or length criteria were not met. 
 
-Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies using Pypolca^10^, MLST assignment (mlst^13^ v2.23.0), and the recovery of key resistance and virulence genes (AMRFinderPlus^14^ v4.0.3 with the species flag inferred from Kraken2^15^ v2.1.3).   
-  
+Accuracy was assessed by substitutions and indels corrected by realigning Illumina short-reads to assemblies using Pypolca<sup>10</sup>, MLST assignment (mlst<sup>13</sup> v2.23.0), and the recovery of key resistance and virulence genes (AMRFinderPlus<sup>14</sup> v4.0.3 with the species flag inferred from Kraken2<sup>15</sup> v2.1.3).   
   
 ### Statistical analysis and visualisation
-
-Statistical analysis and visualisation were done in R (v4.4.1; R Core Team 2024). Proportions were compared with Fisher’s exact test, and counts with Wilcoxon signed-rank tests.
-
-
+Statistical analysis and visualisation were done in R<sup>16</sup> v4.4.1. Proportions were compared with Fisher’s exact test, and counts with Wilcoxon signed-rank tests.
 
 
 ## Acknowledgements
@@ -81,3 +67,4 @@ Nagy, D., Pennetta, V., Rodger, G., Hopkins, K., Jones, C., The NEKSUS Study Gro
 13. Seemann T., mlst Github https://github.com/tseemann/mlst [Accessed 20/11/2024]
 14. Feldgarden M., Brover V., Gonzalez-Escalona N., Frye J.G., Haendiges J., Haft D.H., Hoffmann M., Pettengill J.B., Prasad A.B., Tillman G.E., Tyson G.H., Klimke W. AMRFinderPlus and the Reference Gene Catalog facilitate examination of the genomic links among antimicrobial resistance, stress response, and virulence. Sci Rep. 2021 Jun 16;11(1):12728. doi: 10.1038/s41598-021-91456-0. PMID: 34135355; PMCID: PMC8208984.
 15. Wood, D.E., Lu, J. & Langmead, B. Improved metagenomic analysis with Kraken 2. Genome Biol 20, 257 (2019). https://doi.org/10.1186/s13059-019-1891-0
+16. R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/
