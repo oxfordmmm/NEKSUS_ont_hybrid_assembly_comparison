@@ -3,8 +3,8 @@
 # R Analysis script to produce summary statistics, significance tests, and plots for Nanopore assembly comparison manuscript
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
-#Set working directory
-setwd("C:/Users/dnagy/OneDrive - Nexus365/Documents/DPhil_Clin_Medicine/DPhil/NEKSUS/pilot2/for_publication")
+#Set working directory to wherever supplementary data tables from FigShare have been downloaded
+setwd("https://figshare.com/account/items/29584931/")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 0. Install & Load Packages ####
@@ -46,6 +46,21 @@ if (!requireNamespace("igraph", quietly = TRUE)) {
 if (!requireNamespace("grid", quietly = TRUE)) {
  install.packages("grid")
 }
+if (!requireNamespace("psych", quietly = TRUE)) {
+  install.packages("psych")
+}
+if (!requireNamespace("irr", quietly = TRUE)) {
+  install.packages("irr")
+}
+if (!requireNamespace("rlang", quietly = TRUE)) {
+  install.packages("rlang")
+}
+if (!requireNamespace("ggpubr", quietly = TRUE)) {
+  install.packages("ggpubr")
+}
+if (!requireNamespace("scales", quietly = TRUE)) {
+  install.packages("scales") # for pseudo-log scales for plotting 0s
+}
 
 
 #library(tidyverse)
@@ -69,16 +84,25 @@ library(ggforce)
 library(colorspace)
 library(igraph)
 library(grid)
+library(psych)
+library(irr)
+library(rlang)
+library(ggpubr)
+library(scales)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 1. Raw Reads ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
-raw_qc_sup <- read.csv("raw_qc_sup_cleaned.csv")
+raw_qc_sup <- read.csv("raw_qc_sup.csv")
 #Inspect data if required
 #View(raw_qc_sup)
 #colnames(raw_qc_sup)
 #str(raw_qc_sup)
+
+# remove mixed isolates
+raw_qc_sup <- raw_qc_sup |>
+  filter(sample != "pilot_AF17" & sample != "pilot_AF25"  & sample != "pilot_AF33"  & sample != "pilot_AHB9"  )
 
 #~~~~~~~~~~~~~~~~~~~~~#
 # * Summary Stats ####
@@ -154,7 +178,6 @@ write.csv(qc_summary_table, file = "raw_qc_summary_table_gtsummary.csv")
 
 #~~~~~~~~~~~~~~~~~~#
 # * Stats Test ####
-#Wilcoxon signed rank test for coverage, read length (both mean (avg_len) and median (Q2)), and AvgQual between un-subsampled (raw) and subsampled (sup).
 #arrange by sample to get constant order for pairwise comparison
 raw_qc_sup  <- raw_qc_sup |> arrange(sample)
 filtered_qc  <- filtered_qc |> arrange(sample)
@@ -165,6 +188,16 @@ raw_qc_sup_ont <- raw_qc_sup |> filter(grepl("ONT", assembler))
 
 metrics <- c("coverage", "avg_len", "Q2", "AvgQual")
 
+#Friedman's test for global difference in cont. variables for paired data across m groups.
+#ont reads
+friedman.test(coverage ~ assembler | sample, data = raw_qc_sup_ont) # p<0.0001, as expected as comparing un-subsampled and subsampled
+friedman.test(avg_len ~ assembler | sample, data = raw_qc_sup_ont) #p-value = 0.871
+friedman.test(Q2 ~ assembler | sample, data = raw_qc_sup_ont) #p-value = 0.6683
+friedman.test(AvgQual ~ assembler | sample, data = raw_qc_sup_ont) #p-value = 0.8685
+
+#illumina reads- only 2 groups: raw and subsampled, so see Wilcoxon signed rank below:
+
+#Wilcoxon signed rank pairwise test test for coverage, read length (both mean (avg_len) and median (Q2)), and AvgQual between un-subsampled (raw) and subsampled (sup).
 # Store results
 wilcox_results <- list()
 
@@ -245,15 +278,20 @@ colnames(filtered_qc) <- c("sample","assembler","file","format","type",
 raw_qc_arranged_plots <- plot_qc_metrics(data = filtered_qc, columns = colnames(filtered_qc)[6:23], 
                                          ncol = 3, colours = custom_colours)
 raw_qc_arranged_plots
-ggsave("for_publication/raw_qc_plots.png", raw_qc_arranged_plots, width = 12, height = 15, units = "in")
+ggsave("raw_qc_plots.png", raw_qc_arranged_plots, width = 12, height = 15, units = "in")
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#NOTE: all below data has 4 mixed ('contaminated') samples removed
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 2. Assemblies- Chromosomes (+ all contigs) ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
-contigs_sup <- read.csv("contigs_summary_sup_cleaned.csv")
+contigs_sup <- read.csv("contigs_sup_cleaned.csv")
 #View(contigs_sup)
+
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Summary Stats ####
@@ -269,17 +307,17 @@ condense_contigs <- function(df){
   # Add chromosome circularity and completeness info
   contigs_per_sample <- contigs_per_sample |>
     group_by(sample, assembler) |>
-    mutate(complete_circular_chromosomes = sum(length >= 4000000 & circular == "true"),
-           complete_noncircular_chromosomes = sum(length >= 4000000 & circular != "true"),
-           incomplete_noncircular_chromosomes = sum(length <4000000 & circular != "true"),
-           incomplete_circular_chromosomes = sum(length <4000000 & circular == "true"))
+    mutate(complete_circular_chromosomes = sum(length >= 4000000 & circular == "TRUE"),
+           complete_noncircular_chromosomes = sum(length >= 4000000 & circular != "TRUE"),
+           incomplete_noncircular_chromosomes = sum(length <4000000 & circular != "TRUE"),
+           incomplete_circular_chromosomes = sum(length <4000000 & circular == "TRUE"))
   return(contigs_per_sample)
 }
 
 # Check size distribution of circular contigs
 #shortest circular choromosome = 4.6Mbp, longers circular plasmid ~300 kbp, so big gap, therefore reasonable to separate chsomosomes/ plasmids based on length for this data
 circular_contigs <- contigs_sup |>
-  filter(circular == "true")
+  filter(circular == "TRUE")
 hist(circular_contigs$length)
 #View(circular_contigs)
 
@@ -307,35 +345,91 @@ chromosomes_summary_sup <- summarise_by_assembler(contigs_per_sample_sup)
 
 #~~~~~~~~~~~~~~~~~~~~#
 # * Stats Test ####
+# Fleiss' Kappa (irr package) global test for difference in proportions for paired data
+# transform to wide format
+chromosome_circularity_wide <- contigs_per_sample_sup |>
+  pivot_wider(id_cols = sample, names_from = assembler, values_from = chromosome_circularity)
+#View(chromosome_circularity_wide)
+# Remove the sample column, keeping only the ratings
+selected_df <- chromosome_circularity_wide |> ungroup() |> select(-sample)
 
+# Fleiss' kappa (all assemblers in one go)
+fleiss_result <- kappam.fleiss(selected_df)
+fleiss_result
+
+# Pairwise McNemar's test for paired proportion data between each pair or assemblers
 #set assembler order
-assembler_priority <- c("autocycler", "flye", "hybracter_long", "hybracter_hybrid", "unicycler", "unicycler_bold")
-contigs_per_sample_sup$assembler <- factor(contigs_per_sample_sup$assembler, levels = assembler_priority)
+assemblers <- c("autocycler", "flye", "hybracter_long", "hybracter_hybrid", "unicycler", "unicycler_bold")
+contigs_per_sample_sup$assembler <- factor(contigs_per_sample_sup$assembler, levels = assemblers)
 
-#2-proportion test to calculate Chi-squared test statistic. Care if failure count <5
-# Create a contingency table
-contingency_table_chromosomes <- contigs_per_sample_sup |>
-  group_by(assembler) |>
-  summarise(count = sum(complete_circular_chromosomes ==1, na.rm = TRUE)) |>
-  mutate(failure = 92-count) |>
-  select(count, failure)
-contingency_table_chromosomes <- as.matrix(contingency_table_chromosomes)
-rownames(contingency_table_chromosomes) <- assembler_priority
-  
-# Perform the chi-squared test (base R stats)
-chisq_test <- chisq.test(contingency_table_chromosomes)
-print(chisq_test)
+# look at aggregated summary table
+table(contigs_per_sample_sup$assembler, contigs_per_sample_sup$chromosome_circularity)
 
-#Pairwise Fisher's exact test
-pairwise_fisher_results <- rstatix::pairwise_fisher_test(contingency_table_chromosomes)
-print(pairwise_fisher_results)
+#transform to wide format
+chromosome_circularity_wide <- contigs_per_sample_sup |>
+  pivot_wider(id_cols = sample, names_from = assembler, values_from = chromosome_circularity)
+#View(chromosome_circularity_wide)
 
+# Store results
+results <- list()
+
+# Pairwise McNemar's test
+for (i in 1:(length(assemblers)-1)) {
+  for (j in (i+1):length(assemblers)) {
+    a1 <- assemblers[i]
+    a2 <- assemblers[j]
+    
+    # Create 2x2 table of outcomes
+    tab <- table(chromosome_circularity_wide[[a1]], chromosome_circularity_wide[[a2]])
+    
+    # Ensure it's 2x2 for McNemar
+    if (all(dim(tab) == c(2,2))) {
+      test <- mcnemar.test(tab, correct = TRUE)
+      results[[paste(a1, "vs", a2)]] <- list(
+        table = tab,
+        p.value = test$p.value,
+        statistic = test$statistic
+      )
+    }
+  }
+}
+
+# Print summary
+for (name in names(results)) {
+  cat("\n", name, "\n")
+  print(results[[name]]$table)
+  cat("p-value:", results[[name]]$p.value, "\n")
+}
+
+# transform into matrix of p-values:
+# Initialize empty matrix of NA values
+pval_matrix <- matrix(NA, nrow = length(assemblers), ncol = length(assemblers),
+                      dimnames = list(assemblers, assemblers))
+
+# Fill in upper triangle with p-values from results
+for (name in names(results)) {
+  parts <- unlist(strsplit(name, " vs "))
+  a1 <- parts[1]
+  a2 <- parts[2]
+  pval <- results[[name]]$p.value
+  pval_matrix[a1, a2] <- pval
+  pval_matrix[a2, a1] <- pval  # symmetric
+}
+
+# Fill diagonal with NA or 1
+diag(pval_matrix) <- NA
+
+# Convert to data frame
+pval_df <- as.data.frame(pval_matrix)
+print(pval_df)
+# Optional save to CSV
+write.csv(pval_df, "chromosome_circularity_McNemars_pairwise_with_correction.csv", row.names = TRUE)
 #~~~~~~~~~~~~~~~~~~~~~~~#
 # * Plot ####
 
 # Order samples based on no_circular_chromosomes for each assembler in priority order
 sample_order <- contigs_per_sample_sup |>
-  filter(assembler %in% assembler_priority) |> 
+  filter(assembler %in% assemblers) |> 
   select(sample, assembler, no_circular_chromosomes) |>
   pivot_wider(names_from = assembler, values_from = no_circular_chromosomes) |>
   arrange(desc(autocycler), desc(flye), desc(hybracter_long),  desc(hybracter_hybrid), desc(unicycler), desc(unicycler_bold)) |>
@@ -404,7 +498,11 @@ chromosomes_plot_sup <- ggplot(contigs_per_sample_sup, aes(x = assembler, y = sa
         plot.title = element_text(hjust = 0.5, face = "bold", size = 16, margin = margin(b=20, t = 20)),  # Centered title
         plot.margin = margin(t = 10, r = 10, b = 10, l = 10), # Increase top margin
         axis.title.x = element_text(size = 16, face = "bold", margin = margin(t = 10)),
-        axis.title.y = element_text(size = 16, face = "bold")) +
+        axis.title.y = element_text(size = 16, face = "bold"),
+        panel.grid.major.x = element_blank(),  # Remove major vertical grid lines
+        panel.grid.minor.x = element_blank(),  # Remove minor vertical grid lines
+        panel.grid.minor.y = element_blank()   # remove minor horizontal grid lines
+       ) +
   coord_cartesian(clip = "off") + 
   # Add assembler-specific percentage annotations
   annotate("text", x = percent_samples_fully_circularised$assembler, y = length(sample_order) + 3, 
@@ -417,7 +515,8 @@ chromosomes_plot_sup <- ggplot(contigs_per_sample_sup, aes(x = assembler, y = sa
   annotate("text", x = 5.0, y = -5.8, label = "Hybrid", size = 5)
 
 chromosomes_plot_sup
-ggsave("for_publication/chromosomes_plot_sup.png", chromosomes_plot_sup, width = 6, height = 11, units = "in")
+#optional save
+ggsave("chromosomes_plot_sup.png", chromosomes_plot_sup, width = 6, height = 11, units = "in")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -429,7 +528,6 @@ plasmids_match_hybracter_mash <- read.csv("plasmids_match_hybracter_mash.csv")
 
 #~~~~~~~~~~~~~~~~~~~~~~#
 # * Summary Stats ####
-
 #Calculate number of unique true plasmids
 num_manual_plasmids <- length(unique(plasmids_match_hybracter_mash$plasmid_id))
 
@@ -464,55 +562,129 @@ print(summary_detailed)
 
 
 # Optional Save as CSV
-#write.csv(summary_simple, "plasmids_mash_match_hybracter_ref_simple_summary_table.csv", row.names = FALSE)
-#write.csv(summary_detailed, "plasmids_mash_match_hybracter_ref_detailed_summary_table.csv", row.names = FALSE)
+write.csv(summary_simple, "plasmids_mash_match_hybracter_ref_simple_summary_table.csv", row.names = FALSE)
+write.csv(summary_detailed, "plasmids_mash_match_hybracter_ref_detailed_summary_table.csv", row.names = FALSE)
 
 #~~~~~~~~~~~~~~~~~~~~~~#
 # * Stats Test ####
-contingency_simple <- plasmids_match_hybracter_mash |>
-  group_by(assembler_qry) |>
-  summarise(present = sum(status_with_mash_0.025 == "present"),
-            not_present = sum(status_with_mash_0.025 != "present"))
+# Fleiss' Kappa (irr package) global test for difference in proportions for paired data
+# transform to wide format
+plasmids_match_hybracter_wide <- plasmids_match_hybracter_mash |>
+  pivot_wider(id_cols = plasmid_id, names_from = assembler_qry, values_from = status_with_mash_0.025) |>
+  mutate(across(-plasmid_id, ~ ifelse(.x == "present", "present", "absent or misassembled"))) |>
+  # covert all columns to 2 level factors 
+  mutate(across(-plasmid_id, ~ factor(.x, levels = c("present", "absent or misassembled"))))
+#View(plasmids_match_hybracter_wide)
+# Remove the sample column, keeping only the ratings
+selected_df <- plasmids_match_hybracter_wide |> ungroup() |> select(-plasmid_id)
 
-# Ensure expected order and numeric conversion
-contingency_simple$assembler_qry <- factor(contingency_simple$assembler_qry, levels = assembler_order)
-contingency_simple <- contingency_simple |> mutate(across(c(present, not_present), as.numeric))
-
-contingency_mat <- as.matrix(contingency_simple |> select(present, not_present))
-rownames(contingency_mat) <- contingency_simple$assembler_qry
-
-# Chi-squared test
-chisq_present_result <- chisq.test(contingency_mat)
-print(chisq_present_result)
-
-# Pairwise Fisher's exact test
-hybracter_ref_plasmids_fisher_test_results <- rstatix::pairwise_fisher_test(contingency_mat) # function defined above
-print(hybracter_ref_plasmids_fisher_test_results)
+# Fleiss' kappa (all assemblers in one go)
+fleiss_result <- kappam.fleiss(selected_df)
+fleiss_result
 
 
-# Detailed metrics chi-squared for each
-contingency_detailed <- plasmids_match_hybracter_mash |>
-  group_by(assembler_qry, status_detailed_with_mash_0.025) |>
-  summarise(count = n()) |>
-  pivot_wider(id_cols = assembler_qry, names_from = status_detailed_with_mash_0.025, values_from = count, values_fill = 0)
+# McNemar'e Chi-squared for paired difference in proportions:
+plasmids_match_hybracter_wide <- plasmids_match_hybracter_mash |>
+  pivot_wider(id_cols = plasmid_id, names_from = assembler_qry, values_from = status_with_mash_0.025) |>
+  mutate(across(-plasmid_id, ~ ifelse(.x == "present", "present", "absent or misassembled"))) |>
+  # covert all columns to 2 level factors 
+  mutate(across(-plasmid_id, ~ factor(.x, levels = c("present", "absent or misassembled"))))
+#head(plasmids_match_hybracter_wide)
 
-# Total reference plasmids
-total_plasmids <- length(unique(plasmids_match_hybracter_mash_cleaned$plasmid_id))
+# Get assembler names
+assemblers <- c("autocycler", "flye", "hybracter_long", "hybracter_hybrid", "unicycler", "unicycler_bold")
 
-# Define metrics for testing
-metrics <- colnames(contingency_detailed)[-1]  # excluding assembler
+# Store results
+results <- list()
 
-# Run chi-squared tests
-chisq_results <- lapply(metrics, function(metric) {
-  counts <- contingency_detailed[[metric]]
-  others <- total_plasmids - counts
-  contingency_mat <- rbind(counts, others)
-  chisq.test(contingency_mat)$p.value
+# Pairwise McNemar's test
+for (i in 1:(length(assemblers)-1)) {
+  # ensure all assemblers are as factors
+  for (j in (i+1):length(assemblers)) {
+    a1 <- assemblers[i]
+    a2 <- assemblers[j]
+    
+    # Create 2x2 table of outcomes
+    tab <- table(plasmids_match_hybracter_wide[[a1]], plasmids_match_hybracter_wide[[a2]], useNA = "ifany")
+    
+    # Ensure it's 2x2 for McNemar
+    if (all(dim(tab) == c(2,2))) {
+      test <- mcnemar.test(tab, correct = TRUE)
+      results[[paste(a1, "vs", a2)]] <- list(
+        table = tab,
+        p.value = test$p.value,
+        statistic = test$statistic
+      )
+    }
+  }
+}
+
+# Print summary
+for (name in names(results)) {
+  cat("\n", name, "\n")
+  print(results[[name]]$table)
+  cat("p-value:", results[[name]]$p.value, "\n")
+}
+
+
+# Initialize empty matrix of NA values
+pval_matrix <- matrix(NA, nrow = length(assemblers), ncol = length(assemblers),
+                      dimnames = list(assemblers, assemblers))
+
+# Fill in upper triangle with p-values from results
+for (name in names(results)) {
+  parts <- unlist(strsplit(name, " vs "))
+  a1 <- parts[1]
+  a2 <- parts[2]
+  pval <- results[[name]]$p.value
+  pval_matrix[a1, a2] <- pval
+  pval_matrix[a2, a1] <- pval  # symmetric
+}
+
+# Fill diagonal with NA or 1
+diag(pval_matrix) <- NA
+
+# Convert to data frame
+pval_df <- as.data.frame(pval_matrix)
+print(pval_df)
+# Optional save to CSV
+write.csv(pval_df, "plasmids_match_hybracter_McNemars_pairwise_with_correction.csv", row.names = TRUE)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# One-sample proportion test to compare each proportion 'present' with 100% in Hybracter (hybrid) ref set:
+other_assemblers = setdiff(assemblers, "hybracter_hybrid")
+
+# Count number of "present" values per assembler
+present_counts <- sapply(plasmids_match_hybracter_wide[other_assemblers], function(col) sum(col == "present"))
+
+# Total number of rows (plasmids)
+total <- nrow(plasmids_match_hybracter_wide)
+
+# Run one-sample proportion tests vs. 100%, handling the case where proportion == 1
+pvals <- sapply(present_counts, function(x) {
+  if (x == total) {
+    return(NA)  # p-value is undefined; the proportion is exactly 1
+  } else {
+    # use exact binomial test to test for sig difference in proportion, as proportion test throws error when ref is 100% or 0
+    # has to be one-sides, as cannot be more than 100. 
+    return(binom.test(x, total, p = 1, alternative = "less")$p.value)
+  }
 })
 
-chisq_df <- data.frame(metric = metrics,p_value = unlist(chisq_results))
+# Format as data frame
+results_df <- data.frame(
+  assembler = other_assemblers,
+  num_present = present_counts,
+  total = total,
+  proportion = present_counts / total,
+  p_value_vs_100pct = pvals
+)
 
-print(chisq_df)
+# Print results
+print(results_df)
+# Optional save to csv
+write.csv(results_df, "plasmids_match_hybracter_exact_binomial_test_result.csv", row.names = TRUE)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -644,7 +816,8 @@ final_plot <- (blank_spacer + top_bar) / (left_bar + heatmap_plot) +
 
 print(final_plot)
 
-ggsave("for_publication/plasmids_upset_plot_hybracter_ref.png", final_plot, width = 10, height = 5, units = "in")
+# optional save plot as .png
+ggsave("plasmids_upset_plot_hybracter_ref.png", final_plot, width = 10, height = 5, units = "in")
 
 #~~~~~~~~~~~~~~~~~~~#
 #Frequency Polygon plot of contig length distributions
@@ -689,7 +862,8 @@ plot_contig_lengths <- function(df, title_lab) {
 plasmids_match_hybracter_mash_present <- plasmids_match_hybracter_mash |> filter(status == "present")
 
 hybracter_ref_plasmid_lengths_plot <- plot_contig_lengths(plasmids_match_hybracter_mash_present, "Freq Polygon of Contig lengths of Hybracter (hybrid) ref plasmids")
-ggsave("for_publication/freq_polygon_hybracter_ref_mash_match_plasmids.png", hybracter_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in")
+#optional save as .png
+ggsave("freq_polygon_hybracter_ref_mash_match_plasmids.png", hybracter_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -697,11 +871,11 @@ ggsave("for_publication/freq_polygon_hybracter_ref_mash_match_plasmids.png", hyb
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
 # load mash distances
-mash <- read.csv("for_publication/mash_cleaned.csv")
+mash <- read.csv("mash_cleaned.csv")
 #View(mash)  
 
 #load MOB-suite data
-mobsuite <- read.csv(file = "for_publication/mobsuite_cleaned.csv")
+mobsuite <- read.csv(file = "mobsuite_cleaned.csv")
 #View(mobsuite)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -709,6 +883,7 @@ mobsuite <- read.csv(file = "for_publication/mobsuite_cleaned.csv")
 # remove same-assembler matches 
 mash_cleaned <- mash |> filter(qry_assembler != ref_assembler)
 #View(mash_cleaned)
+nrow(mash) #370315
 nrow(mash_cleaned) #147856
 
 
@@ -756,7 +931,7 @@ mash_final <- mash_final |>
   arrange(desc(mash_diff))
 
 #check
-sum(mash_final$mash_diff != 0) # should be 0
+sum(mash_final$mash_diff != 0) # 0, as it should be as mash distances in both directions expected to be identical
 
 
 #keep only best matching contig from each other assembler
@@ -784,9 +959,10 @@ mash_final_best <- mash_final_best |>
   select(sample, qry_assembler, qry_contig, ref_assembler, ref_contig, mash_dist, p_value, matching_hashes)
 
 # merge with contig annotation data from MOB-suite (only 1000-400,000 conitgs; chromosomes removed)
-# clean up mobsuite data first: # Filter only potential plasmids data- remove contigs >400,000 and <1000 and add number of contigs per sample
+# clean up mobsuite data first: 
+# Filter only potential plasmids data- remove contigs >400,000 and <1000 and add number of contigs per sample
 mobsuite_no_chromosomes <- mobsuite |>
-  filter(size <= 400000 & size >= 1000 ) |>
+  filter(size < 400000 & size > 1000 ) |>
   arrange(sample, assembler, -size) |>
   group_by(sample_id, assembler) |>
   mutate(numcontig = n()) |>
@@ -802,13 +978,14 @@ mobsuite_no_chromosomes <- mobsuite_no_chromosomes |>
   select(assembler, sample, molecule_type, primary_cluster_id, secondary_cluster_id, contig_id_cleaned, 
          size, circularity_status, rep_type.s., relaxase_type.s. , mpf_type, orit_type.s., predicted_mobility, mash_nearest_neighbor)
 
-# merge based on ref to conitgs info.
+# merge based on ref to conitgs info
 mash_mob_merged <- mash_final_best |>
   left_join(mobsuite_no_chromosomes,
             by = c("sample" = "sample",
                    "ref_assembler" = "assembler",
                    "ref_contig" = "contig_id_cleaned"))
 
+#merge based on qry contig info
 mash_mob_merged <- mash_mob_merged |>
   left_join(mobsuite_no_chromosomes,
             by = c("sample" = "sample",
@@ -882,10 +1059,10 @@ check_repeats <- component_df |>
   summarise(count = n()) |>
   filter(count >1)
 #View(check_repeats)
-unique(check_repeats$match_set_id) # 2 match sets: 52 (sample pilot_AF43) 301 (pilot_AF57)
+unique(check_repeats$match_set_id)
 
 # Manually fix groups with >6 contigs present, based on match_set_id
-# remove erroneous links
+# remove erroneous links/edges
 plasmids_mash_manually_cleaned <- mash_mob_merged |>
   # remove incorrectly assigned contigs (manually checked based on all contig/ plasmid info)
   filter(!(sample == "pilot_AJ1" & qry_assembler == "autocycler" & qry_contig == "2" & ref_assembler %in% c("unicycler", "unicycler_bold") & ref_contig == "4")) |>
@@ -899,7 +1076,7 @@ plasmids_mash_manually_cleaned <- mash_mob_merged |>
 #get rows to replace:
 rows_to_add <- mash_final |>
   filter(
-           sample == "pilot_AJ1" & qry_assembler == "autocycler" & qry_contig == "2" & ref_assembler %in% c("unicycler", "unicycler_bold") & ref_contig == "3" | # this column not found
+           sample == "pilot_AJ1" & qry_assembler == "autocycler" & qry_contig == "2" & ref_assembler %in% c("unicycler", "unicycler_bold") & ref_contig == "3" | 
            sample == "pilot_AF43" & qry_assembler == "autocycler" & qry_contig == "2" & ref_assembler %in% c("unicycler", "unicycler_bold") & ref_contig == "2"|
            sample == "pilot_AF57" & qry_assembler == "autocycler" & qry_contig == "7" & ref_assembler  == "unicycler_bold" & ref_contig == "6"|
            sample == "pilot_AF57" & qry_assembler == "unicycler_bold" & qry_contig == "6" & ref_assembler  == "unicycler" & ref_contig == "7"
@@ -942,6 +1119,7 @@ df_plasmids_mash_all_nodes <- plasmids_mash_manually_cleaned |>
       rename(assembler = ref_assembler, contig = ref_contig)
   ) |>
   distinct()
+#View(df_plasmids_mash_all_nodes)
 
 # --- Add node ID
 df_plasmids_mash_all_nodes <- df_plasmids_mash_all_nodes |>
@@ -954,6 +1132,7 @@ edges <- plasmids_mash_manually_cleaned |>
     from = paste(sample, qry_assembler, qry_contig, sep = "|"),
     to   = paste(sample, ref_assembler, ref_contig, sep = "|")
   )
+#View(edges)
 
 g <- graph_from_data_frame(edges |> select(from, to), directed = FALSE)
 components <- components(g)
@@ -964,46 +1143,96 @@ component_df <- data.frame(
   match_set_id = components$membership
 ) |>
   separate(node, into = c("sample", "assembler", "contig"), sep = "\\|")
+#View(component_df)
 
 # --- Full node info with match_set_id
 all_plasmids <- df_plasmids_mash_all_nodes |>
   left_join(component_df, by = c("sample", "assembler", "contig"))
+#View(all_plasmids)
 
 # --- Get all assembler combinations to spread
 assemblers <- union(
   unique(plasmids_mash_manually_cleaned$qry_assembler),
   unique(plasmids_mash_manually_cleaned$ref_assembler)
 )
+
+#add macth set id to plasmid_mash_manually_cleaned df
+plasmids_mash_manually_cleaned_sets <- plasmids_mash_manually_cleaned |>
+  left_join(all_plasmids,
+            by = c("sample" = "sample",
+                   "ref_assembler" = "assembler",
+                   "ref_contig" = "contig")) |>
+  left_join(all_plasmids,
+            by = c("sample" = "sample",
+                   "qry_assembler" = "assembler",
+                   "qry_contig" = "contig"),
+            suffix = c("_ref", "_qry"))
+#View(plasmids_mash_manually_cleaned_sets)
+nrow(plasmids_mash_manually_cleaned_sets) #4393
+
+#mismatch <- plasmids_mash_manually_cleaned_sets |>
+ # filter(match_set_id_ref != match_set_id_qry)
+#View(mismatch) # mash dist >0.2 for removed rows
+
+plasmids_mash_manually_cleaned_sets <- plasmids_mash_manually_cleaned_sets |>
+  filter(match_set_id_ref == match_set_id_qry) |>
+  # add size difference as percentage of the largest plasmid
+  mutate(size_diff_percent = abs(( size_diff/pmax(size_ref, size_qry)) * 100))
+nrow(plasmids_mash_manually_cleaned_sets) #4389
+
+
+
 # --- For each assembler, add mash_dist_* and size_diff_*
 for (a in assemblers) {
   all_plasmids <- all_plasmids |>
     rowwise() |>
     mutate(
       !!paste0("mash_dist_", a) := {
-        row_match <- plasmids_mash_manually_cleaned |>
-          filter(sample == cur_data()$sample,
-                 ((qry_assembler == assembler & qry_contig == contig & ref_assembler == a) |
-                    (ref_assembler == assembler & ref_contig == contig & qry_assembler == a)))
-        if (nrow(row_match) == 0) NA_real_ else row_match$mash_dist[1]
+        if (assembler == a) {
+          0
+        } else {
+          row_match <- plasmids_mash_manually_cleaned_sets |>
+            filter(
+              sample == cur_data()$sample,
+              (
+                (qry_assembler == assembler & qry_contig == contig & ref_assembler == a & match_set_id_ref == match_set_id) |
+                  (ref_assembler == assembler & ref_contig == contig & qry_assembler == a & match_set_id_qry == match_set_id)
+              )
+            )
+          if (nrow(row_match) == 0) NA_real_ else row_match$mash_dist[1]
+        }
       },
-      !!paste0("size_diff_", a) := {
-        row_match <- plasmids_mash_manually_cleaned |>
-          filter(sample == cur_data()$sample,
-                 ((qry_assembler == assembler & qry_contig == contig & ref_assembler == a) |
-                    (ref_assembler == assembler & ref_contig == contig & qry_assembler == a)))
-        if (nrow(row_match) == 0) NA_real_ else row_match$size_diff[1]
+      !!paste0("size_diff_percent_", a) := {
+        if (assembler == a) {
+          0
+        } else {
+          row_match <- plasmids_mash_manually_cleaned_sets |>
+            filter(
+              sample == cur_data()$sample,
+              (
+                (qry_assembler == assembler & qry_contig == contig & ref_assembler == a & match_set_id_ref == match_set_id) |
+                  (ref_assembler == assembler & ref_contig == contig & qry_assembler == a & match_set_id_qry == match_set_id)
+              )
+            )
+          if (nrow(row_match) == 0) NA_real_ else row_match$size_diff_percent[1]
+        }
       }
     ) |>
     ungroup()
 }
+#View(all_plasmids)
 
-# --- Compute num_non_na, dist_match, and mash_match
+# --- Compute number of plasmids present in match set (num_non_na), number of plasmids with mash distance within 0.025, and whether overall mash match (num_mash_match; mash_match), number of plasmids with length within 10% and whether overall length match (num_size_match, size_match)
 all_plasmids <- all_plasmids |>
+  group_by(match_set_id) |>
+  mutate(num_non_na = n()) |>
+  ungroup() |>
   rowwise() |>
   mutate(
-    num_non_na = sum(!is.na(c_across(starts_with("mash_dist_")))),
+    num_mash_match = sum(c_across(starts_with("mash_dist_")) < 0.025, na.rm = TRUE),
+    num_size_match = sum(abs(c_across(starts_with("size_diff_percent_"))) < 10, na.rm = TRUE),
     mash_match = sum(c_across(starts_with("mash_dist_")) < 0.025, na.rm = TRUE) > num_non_na / 2,
-    dist_match = sum(abs(c_across(starts_with("size_diff_"))) < 10, na.rm = TRUE) > num_non_na / 2
+    size_match = sum(abs(c_across(starts_with("size_diff_percent_"))) < 10, na.rm = TRUE) > num_non_na / 2
   ) |>
   ungroup()
 #View(all_plasmids)
@@ -1024,31 +1253,21 @@ all_plasmids_status_info <- all_plasmids_contig_info |>
     num_circular = sum(circularity_status %in% TRUE, na.rm = TRUE),
     true_plasmid_status = num_circular >= 2
   ) |>
-  ungroup() |>
-  
-  # Step 2: Count number of TRUE mash and size matches per match set
-  group_by(match_set_id) |>
-  mutate(
-    num_mash_match = sum(mash_match %in% TRUE, na.rm = TRUE),
-    size_match = rowSums(
-      across(starts_with("size_diff_"), ~ abs(.) <= 0.1),  # 10% threshold
-      na.rm = TRUE
-    ) >= ceiling((num_non_na %||% 1) / 2),  # avoid divide by 0
-    
-    num_size_match = sum(size_match %in% TRUE, na.rm = TRUE)
-  ) |>
-  ungroup() |>
-  
-  # Step 3: Determine status per plasmid
+  ungroup() 
+#View(all_plasmids_status_info)
+
+
+# Step 3: Determine status per plasmid
+all_plasmids_status_info <- all_plasmids_status_info|>
   mutate(
     status = case_when(
-      mash_match & dist_match & circularity_status ~ "present",
-      !mash_match & dist_match & circularity_status ~ "mash_mismatch",
-      mash_match & !dist_match & circularity_status ~ "size_mismatch",
-      mash_match & dist_match & !circularity_status ~ "circ_mismatch",
-      mash_match & !dist_match & !circularity_status ~ "circ_size_mismatch",
-      !mash_match & dist_match & !circularity_status ~ "mash_circ_mismatch",
-      !mash_match & !dist_match ~ "absent",
+      mash_match & size_match & circularity_status ~ "present",
+      !mash_match & size_match & circularity_status ~ "mash_mismatch",
+      mash_match & !size_match & circularity_status ~ "size_mismatch",
+      mash_match & size_match & !circularity_status ~ "circ_mismatch",
+      mash_match & !size_match & !circularity_status ~ "circ_size_mismatch",
+      !mash_match & size_match & !circularity_status ~ "mash_circ_mismatch",
+      !mash_match & !size_match ~ "absent",
       TRUE ~ NA_character_
     )
   )
@@ -1078,7 +1297,7 @@ all_plasmids_status_true_completed <- all_plasmids_status_true_completed |>
   mutate(status_simple = case_when(status == "present"~ "present",
                                    status == "absent" ~ "absent",
                                    TRUE ~ "misassembled"))
-
+#View(all_plasmids_status_true_completed)
 
 #check how many present for each match_set
 match_set_check <- all_plasmids_status_true_completed |>
@@ -1088,10 +1307,10 @@ match_set_check <- all_plasmids_status_true_completed |>
   filter(count != 6)
 #View(match_set_check) # should be all at 6
 
-#save compelted table
+# optional save completed table
+write.csv(all_plasmids_status_true_completed, "plasmids_match_manual_mash.csv", row.names = FALSE)
 write.csv(all_plasmids_status_true_completed, "for_publication/plasmids_match_manual_mash.csv", row.names = FALSE)
-
-# check match set NAs!
+#all_pasmilds_status_true_completed <- read.csv("plasmids_match_manual_mash.csv")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Tables of detailed status with mash distance ####
@@ -1133,56 +1352,90 @@ summary_detailed <- all_plasmids_status_true_completed |>
   rename(Status = status)
 
 # Step 4: Save as CSV (optional)
-#write.csv(summary_simple, "plasmids_mash_match_manual_simple_summary_table.csv", row.names = FALSE)
-#write.csv(summary_detailed, "plasmids_mash_match_manual_detailed_summary_table.csv", row.names = FALSE)
+write.csv(summary_simple, "plasmids_mash_match_manual_simple_summary_table.csv", row.names = FALSE)
+write.csv(summary_detailed, "plasmids_mash_match_manual_detailed_summary_table.csv", row.names = FALSE)
 
 #~~~~~~~~~~~~~~~~~~~#
 # * Stats tests ####
 
-contingency_simple <- all_plasmids_status_true_completed |>
-  group_by(assembler) |>
-  summarise(present = sum(status == "present"),
-            not_present = sum(status != "present"))
+# Load and prepare data, if not already loaded 
+#all_plasmids_status_true_completed <- read.csv("plasmids_match_manual_mash.csv")
+#View(all_plasmids_status_true_completed)
 
-# Ensure expected order and numeric conversion
-contingency_simple$assembler <- factor(contingency_simple$assembler, levels = assembler_order)
-contingency_simple <- contingency_simple |> mutate(across(c(present, not_present), as.numeric))
+# Fleiss' Kappa (irr package) global test for difference in proportions for paired data
+# transform to wide format
+plasmids_match_manual_wide <- all_plasmids_status_true_completed |>
+  pivot_wider(id_cols = match_set_id, names_from = assembler, values_from = status_simple) |>
+  mutate(across(-match_set_id, ~ ifelse(.x == "present", "present", "absent or misassembled"))) |>
+  # covert all columns to 2 level factors 
+  mutate(across(-match_set_id, ~ factor(.x, levels = c("present", "absent or misassembled"))))
+#View(plasmids_match_manual_wide)
+# Remove the sample column, keeping only the ratings
+selected_df <- plasmids_match_manual_wide |> ungroup() |> select(-match_set_id)
 
-contingency_mat <- as.matrix(contingency_simple |> select(present, not_present))
-rownames(contingency_mat) <- contingency_simple$assembler
+# Fleiss' kappa (all assemblers in one go)
+fleiss_result <- kappam.fleiss(selected_df)
+fleiss_result
 
-# Chi-squared test
-chisq_present_result <- chisq.test(contingency_mat)
-print(chisq_present_result)
+# McNemar'e Chi-squared for paired difference in proportions:
+# Get assembler names
+assemblers <- c("autocycler", "flye", "hybracter_long", "hybracter_hybrid", "unicycler", "unicycler_bold")
 
-# Pairwise Fisher's exact test
-manual_ref_plasmids_fisher_test_results <- rstatix::pairwise_fisher_test(contingency_mat) # function defined above
-print(manual_ref_plasmids_fisher_test_results)
+# Store results
+results <- list()
+
+# Pairwise McNemar's test
+for (i in 1:(length(assemblers)-1)) {
+  # ensure all assemblers are as factors
+  for (j in (i+1):length(assemblers)) {
+    a1 <- assemblers[i]
+    a2 <- assemblers[j]
+    
+    # Create 2x2 table of outcomes
+    tab <- table(plasmids_manual_match_wide[[a1]], plasmids_manual_match_wide[[a2]], useNA = "ifany")
+    
+    # Ensure it's 2x2 for McNemar
+    if (all(dim(tab) == c(2,2))) {
+      test <- mcnemar.test(tab, correct = TRUE)
+      results[[paste(a1, "vs", a2)]] <- list(
+        table = tab,
+        p.value = test$p.value,
+        statistic = test$statistic
+      )
+    }
+  }
+}
+
+# Print summary
+for (name in names(results)) {
+  cat("\n", name, "\n")
+  print(results[[name]]$table)
+  cat("p-value:", results[[name]]$p.value, "\n")
+}
 
 
-# Detailed metrics chi-squared for each
-contingency_detailed <- all_plasmids_status_true_completed |>
-  group_by(assembler, status) |>
-  summarise(count = n()) |>
-  pivot_wider(id_cols = assembler, names_from = status, values_from = count, values_fill = 0)
+# Initialize empty matrix of NA values
+pval_matrix <- matrix(NA, nrow = length(assemblers), ncol = length(assemblers),
+                      dimnames = list(assemblers, assemblers))
 
-# Total reference plasmids
-total_plasmids <- length(unique(all_plasmids_status_true_completed$match_set_id))
+# Fill in upper triangle with p-values from results
+for (name in names(results)) {
+  parts <- unlist(strsplit(name, " vs "))
+  a1 <- parts[1]
+  a2 <- parts[2]
+  pval <- results[[name]]$p.value
+  pval_matrix[a1, a2] <- pval
+  pval_matrix[a2, a1] <- pval  # symmetric
+}
 
-# Define metrics for testing
-metrics <- colnames(contingency_detailed)[-1]  # excluding assembler
+# Fill diagonal with NA or 1
+diag(pval_matrix) <- NA
 
-# Run chi-squared tests
-chisq_results <- lapply(metrics, function(metric) {
-  counts <- contingency_detailed[[metric]]
-  others <- total_plasmids - counts
-  contingency_mat <- rbind(counts, others)
-  chisq.test(contingency_mat)$p.value
-})
-
-chisq_df <- data.frame(metric = metrics,p_value = unlist(chisq_results))
-
-print(chisq_df)
+# Convert to data frame
+pval_df <- as.data.frame(pval_matrix)
+print(pval_df)
+# Optional save to CSV
+write.csv(pval_df, "plasmids_match_manual_McNemars_pairwise_with_correction.csv", row.names = TRUE)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -1327,18 +1580,23 @@ final_plot <- (blank_spacer + top_bar) / (left_bar + heatmap_plot) +
 final_plot
 
 #optional save
-#ggsave("plasmids_mash_0_025_match_manually_curated.png", final_plot, width = 12, height = 6, units = "in")
+ggsave("plasmids_mash_0_025_match_manually_curated.png", final_plot, width = 12, height = 6, units = "in")
+ggsave("for_publication/plasmids_mash_0_025_match_manually_curated.png", final_plot, width = 12, height = 6, units = "in")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #Frequency Polygon plot:
 #call function defined above to plot frequency polygon
 all_plasmids_status_true_completed_present <- all_plasmids_status_true_completed |>
-  filter(status == "present")
+  filter(status == "present") |>
+  # make new cols to match names in above function
+  mutate(assembler_qry = assembler,
+         size_qry = size)
 
 manual_ref_plasmid_lengths_plot <- plot_contig_lengths(all_plasmids_status_true_completed_present, "Freq Polygon of Contig lengths of Manually-Curated ref plasmids")
 #optional save
-#ggsave("freq_polygon_manually-curated_ref_mash_match_plasmids.png", manual_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in")
+#
+ggsave("freq_polygon_manually-curated_ref_mash_match_plasmids.png", manual_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -1346,7 +1604,7 @@ manual_ref_plasmid_lengths_plot <- plot_contig_lengths(all_plasmids_status_true_
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
 # load snp, indel and QV data
-assembly_accuracy <- read.csv("assembly_nucleotide_accuracy_cleaned.csv")
+assembly_accuracy <- read.csv("for_publication/assembly_nucleotide_accuracy_cleaned.csv")
 #View(assembly_accuracy)
 
 
@@ -1390,16 +1648,19 @@ checkm2_summary <- summarise_metrics(checkm2, c(7,9))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Stats Test ####
-#Kruskall-Walis overall test
-snps_kruskall_result <- kruskal.test(snps_per_Mb ~ assembler, data = assembly_accuracy)
-indels_kruskall_result <- kruskal.test(indels_per_Mb ~ assembler, data = assembly_accuracy)
-qv_kruskall_result <- kruskal.test(consensus_qv_before_polishing ~ assembler, data = assembly_accuracy)
+# Global Friedman's test for difference in cont. variables for paired data across m groups
 
-CD_kruskall_result <- kruskal.test(Coding_Density ~ assembler, data = checkm2)
-agl_kruskall_result <- kruskal.test(Average_Gene_Length ~ assembler, data = checkm2)
+metrics <- c("snps_per_Mb", "indels_per_Mb", "consensus_qv_before_polishing")
 
 
+friedman.test(snps_per_Mb ~ assembler | sample, data = assembly_accuracy) # p<0.0001
+friedman.test(indels_per_Mb ~ assembler | sample, data = assembly_accuracy) # p<0.0001
+friedman.test(consensus_qv_before_polishing ~ assembler | sample, data = assembly_accuracy) # p<0.0001
 
+friedman.test(Coding_Density ~ assembler | sample, data = checkm2) # p<0.0001
+friedman.test(Average_Gene_Length ~ assembler | sample, data = checkm2) # p<0.0001
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #Paiwise Wilcoxom signed rank test
 assembly_accuracy <- assembly_accuracy |> arrange(sample)
 metrics_accuracy <- c("snps_per_Mb", "indels_per_Mb", "consensus_qv_before_polishing")
@@ -1423,10 +1684,10 @@ final_wilcox_results <- bind_rows(wilcox_results_list)
 #View(final_wilcox_results)
 
 # save wilcox results optional
-# write.csv(final_wilcox_results, "assembly_accuracy_wilcoxon_results.csv", row.names = FALSE)
+write.csv(final_wilcox_results, "assembly_accuracy_wilcoxon_results.csv", row.names = FALSE)
 
 #Repeat for checkm2
-checkm2 <- checkm2 |> arrange(Name)
+checkm2 <- checkm2 |> arrange(sample)
 metrics_checkm2 <- c("Coding_Density", "Average_Gene_Length")
 
 wilcox_results_list <- list()
@@ -1446,7 +1707,7 @@ for (metric in metrics_checkm2) {
 final_wilcox_results <- bind_rows(wilcox_results_list)
 #View(final_wilcox_results)
 #optional save pairwise wilcox results
-#write.csv(final_wilcox_results, "checkm2_pairwise_wilcoxon_results.csv", row.names = FALSE)
+write.csv(final_wilcox_results, "checkm2_pairwise_wilcoxon_results.csv", row.names = FALSE)
 
 
 #~~~~~~~~~~~~~~~~~~~#
@@ -1527,25 +1788,94 @@ plot_metric <- function(data, metric, metric_label, title_lab, scaling_for_label
 # SNPs / Mb
 plot_accuracy <- plot_metric(assembly_accuracy, "snps_per_Mb" , "SNPs/1,000,000 bp" ,  "Substitution errors corrected by Illumina short-read alignment by Assembler (sup)", 0.9)
 #optional save
-#ggsave("assembly_accuracy_substitutions_perMb_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
+ggsave("assembly_accuracy_substitutions_perMb_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
 
 #Indels / Mb
 plot_accuracy <- plot_metric(assembly_accuracy, "indels_per_Mb" , "Indels/1,000,000 bp" , "Insertions errors corrected by Illumina short-read alignment by Assembler (sup)", 0.9)
 #optional save
-#ggsave("assembly_accuracy_indels_perMb_plot.png", plot_accuracy, width = 7.5 , height = 5, units = "in")
+ggsave("assembly_accuracy_indels_perMb_plot.png", plot_accuracy, width = 7.5 , height = 5, units = "in")
 
 #QV
 plot_accuracy <- plot_metric(assembly_accuracy, "consensus_qv_before_polishing" , "Quality Value" , "Assembly Quality Value Before Short-read Alignment Error Correction by Assembler (sup)", 0.9)
 #optional save
-#ggsave("assembly_accuracy_QV_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
+ggsave("assembly_accuracy_QV_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
 
 
-#CheckM2 metrics
+#CheckM2 metrics- plot without the pseudo-log scale
+plot_metric_neutral_scale <- function(data, metric, metric_label, title_lab, scaling_for_labels = 0.9) {
+  
+  
+  # Define colors based on "assembler"
+  assembler_colors <- c(
+    "autocycler" = "#332288",             # Dark Blue for autocycler
+    "autocycler_medaka" = "#5E56A6",      # Lighter Blue for autocycler_medaka
+    "autocycler_medaka_full" = "#8A84C5", # Even lighter Blue for autocycler_medaka_full
+    "autocycler_pypolca" = "#B1A0E3",  # Lightest Blue for autocycler_polypolish_pypolca
+    "flye" = "#88ccee",                  # Light Blue for flye
+    "flye_medaka" = "#B2D8E9",           # Lighter Blue for flye_medaka
+    "flye_medaka_full" = "#C7E6F2",      # Even lighter Blue for flye_medaka_full
+    "flye_pypolca" = "#D9F1F9",  # Lightest Blue for flye_polypolish_pypolca
+    "hybracter_long" = "#44aa99",        # Teal for hybracter_long
+    "hybracter_hybrid" = "#117733",      # Green for hybracter_hybrid
+    "unicycler" = "#cc6677",             # Red for unicycler
+    "unicycler_bold" = "#882255"         # Dark Red for unicycler_bold
+  )
+  
+  # Define shapes based on "polishing" category
+  polishing_shapes <- c(
+    "unpolished" = 4,                  # open circle
+    "long-read (subsampled)" = 24,      # open Triangle
+    "long-read (all reads)" = 22,       # open Square
+    "short-read" = 21,                  # star
+    "NA (Unicycler)" = 18,  # Solid diamond
+    "NA (Unicycler-bold)" = 15  #solid square
+  )
+  
+  # Define x-axis group labels and horizontal lines
+  assembler_labels <- data.frame(
+    x = c(2.5, 6.5, 9.3, 12),  # Midpoints of each group
+    y = min(data[[metric]], na.rm = TRUE) * scaling_for_labels,  # Position below lowest value
+    label = c("Autocycler", "Flye", "Hybracter", "Unicycler")
+  )
+  
+  assembler_lines <- data.frame(
+    x_start = c(0.7, 4.7, 8.7, 10.7),
+    x_end = c(4.3, 8.3, 10.3, 12.3),
+    y = min(data[[metric]], na.rm = TRUE) * scaling_for_labels  # Just below x-axis
+    # change to 0.9 for pypolca plots to have some more distance
+  )
+  
+  metric_plot <- ggplot(data, aes(x = assembler, y = !!sym(metric))) +
+    # geom_violin(aes(fill = assembler), color = "black") +  # Black boxplot borders
+    geom_boxplot(aes(fill = assembler), width = 0.8, outlier.shape = NA, color = "black") +  # Black boxplot borders
+    geom_point(aes(shape = polishing, fill = assembler), 
+               size = 1.5, stroke = 0.5, color = "black", 
+               alpha = 0.8, position = position_jitter(width = 0.1, height = 0)) +  
+    labs(x = "", y = metric_label , title = title_lab) +
+    scale_fill_manual(values = assembler_colors, guide = "none") +  # Hide fill legend
+    scale_shape_manual(name = "Polishing", values = polishing_shapes) +  # Keep only shape legend
+    scale_y_continuous() +
+    scale_x_discrete(expand = expansion(mult = c(0.1, 0.1))) +  
+    theme_bw() +
+    theme(
+      legend.position = "right",
+      axis.text.x = element_blank(),  
+      axis.ticks.x = element_blank(),  
+      plot.margin = margin(10, 10, 14, 10)  
+    ) +
+    coord_cartesian(clip = "off") +  
+    geom_segment(data = assembler_lines, aes(x = x_start, xend = x_end, y = y, yend = y),
+                 inherit.aes = FALSE, color = "black", size = 0.8) +  
+    geom_text(data = assembler_labels, aes(x = x, y = y, label = label),  
+              vjust = 3.5, size = 5, fontface = "bold", inherit.aes = FALSE) 
+  
+  return(metric_plot)
+}
+
 #Avergae Gene Length
-plot_accuracy <- plot_metric(checkm2, "Average_Gene_Length" , "Average Gene Length" , "Average Gene Length by Assembler- Polisher Combination", 0.999)
+plot_accuracy <- plot_metric_neutral_scale(checkm2, "Average_Gene_Length" , "Average Gene Length" , "Average Gene Length by Assembler- Polisher Combination", 0.999)
 #optional save
-#ggsave("checkm2_average_gene_length_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
-
+ggsave("for_publication/checkm2_average_gene_length_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -1553,7 +1883,7 @@ plot_accuracy <- plot_metric(checkm2, "Average_Gene_Length" , "Average Gene Leng
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
 mlst <- read.csv("mlst_cleaned.csv")
-
+#View(mlst)
 
 # * Summary Stats ####
 summarise_mlst <- function(df) {
@@ -1567,7 +1897,8 @@ summarise_mlst <- function(df) {
 }
 
 #call summary function
-mlst_wide<- summarise_mlst(mlst)
+mlst_wide <- summarise_mlst(mlst)
+#View(mlst_wide)
 
 # save table (optional)
 #write.csv(mlst_summary, file = "mlst_summary.csv")
@@ -1594,13 +1925,13 @@ mlst_real <- mlst_wide |>
   rowwise() |>
   mutate(
     real_mlst = list(most_common(c_across(all_of(mlst_cols)))),
-    real_gene1 = most_common(c_across(grep("^gene1_", names(mlst_summary_sup_contam_free), value = TRUE))),
-    real_gene2 = most_common(c_across(grep("^gene2_", names(mlst_summary_sup_contam_free), value = TRUE))),
-    real_gene3 = most_common(c_across(grep("^gene3_", names(mlst_summary_sup_contam_free), value = TRUE))),
-    real_gene4 = most_common(c_across(grep("^gene4_", names(mlst_summary_sup_contam_free), value = TRUE))),
-    real_gene5 = most_common(c_across(grep("^gene5_", names(mlst_summary_sup_contam_free), value = TRUE))),
-    real_gene5_2 = most_common(c_across(grep("^gene5_2_", names(mlst_summary_sup_contam_free), value = TRUE))),
-    real_gene6 = most_common(c_across(grep("^gene6_", names(mlst_summary_sup_contam_free), value = TRUE))),
+    real_gene1 = most_common(c_across(grep("^gene1_", names(mlst_wide), value = TRUE))),
+    real_gene2 = most_common(c_across(grep("^gene2_", names(mlst_wide), value = TRUE))),
+    real_gene3 = most_common(c_across(grep("^gene3_", names(mlst_wide), value = TRUE))),
+    real_gene4 = most_common(c_across(grep("^gene4_", names(mlst_wide), value = TRUE))),
+    real_gene5 = most_common(c_across(grep("^gene5_", names(mlst_wide), value = TRUE))),
+    real_gene5_2 = most_common(c_across(grep("^gene5_2_", names(mlst_wide), value = TRUE))),
+    real_gene6 = most_common(c_across(grep("^gene6_", names(mlst_wide), value = TRUE))),
     
   ) |>
   ungroup() 
@@ -1618,6 +1949,7 @@ for (assembler in assemblers) {
     rowSums(mlst_real[gene_match_cols] == mlst_real[real_gene_cols], na.rm = TRUE)
 }
 
+
 #convert lists to strings before saving
 mlst_real <- data.frame(lapply(mlst_real, function(x) {
   if (is.list(x)) sapply(x, toString) else x}), stringsAsFactors = FALSE)
@@ -1625,7 +1957,7 @@ mlst_real <- data.frame(lapply(mlst_real, function(x) {
 nrow(mlst_real)
 
 
-#filter out rows where no MLST typing sheme available:
+#filter out rows where no MLST typing scheme available:
 mlst_real <- mlst_real |>
   filter(
     real_gene1 != "" & !is.na(real_gene1),
@@ -1652,26 +1984,95 @@ mlst_summary_selected <- mlst_summary |>
 
 # View the summary table
 #View(mlst_summary_selected)
+# optional save as csv
 #write.csv(mlst_summary_selected, file = "mlst_summary.csv", row.names = FALSE)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Stats Test ####
-# Chi-squared
-mlst_summary_transposed <- t(mlst_summary_selected)
-#View(mlst_summary_transposed)
-colnames(mlst_summary_transposed) <- "correct_mlst"
-mlst_summary_transposed <- data.frame(mlst_summary_transposed)
 
-mlst_summary_transposed <- mlst_summary_transposed |>
-  mutate(no_mlst_match = nrow(mlst_real)- correct_mlst) 
-mlst_chi2_results <- chisq.test(mlst_summary_transposed) # 0.7965
+# Prepare data, if not already loaded
+# need another column for where all the MLST types match, but not assigned pattern yet. 
+mlst_real_selected <- mlst_real |>
+  select(sample, starts_with("num_genes_match_")) |>
+  # Rename columns to remove the prefix
+  rename_with(~ sub("^num_genes_match_", "", .x), .cols = -sample) |>
+  mutate(across(-sample, ~ ifelse(.x == "7", "MLST match", "non-match"))) |>
+  # standardise columns to be 2-level factors, so even 0-count columns show up for McNemar's test
+  mutate(across(-sample, ~ factor(.x, levels = c("MLST match", "non-match"))))
+#View(mlst_real_selected)
+
+
+# Fleiss' kappa global test for difference in categorical outcome in m raters (all assemblers in one go)
+ratings <- mlst_real_selected |> select(-sample)
+fleiss_result <- kappam.fleiss(ratings)
+fleiss_result #p<0.0001
+
+# McNemar'e Chi-squared for paired difference in proportions:
+# Get assembler names
+assemblers <- names(mlst_real_selected)[-1]
+
+# Store results
+results <- list()
+
+# Pairwise McNemar's test
+for (i in 1:(length(assemblers)-1)) {
+  # ensure all assemblers are as factors
+  for (j in (i+1):length(assemblers)) {
+    a1 <- assemblers[i]
+    a2 <- assemblers[j]
+    
+    # Create 2x2 table of outcomes
+    tab <- table(mlst_real_selected[[a1]], mlst_real_selected[[a2]], useNA = "ifany")
+    
+    # Ensure it's 2x2 for McNemar
+    if (all(dim(tab) == c(2,2))) {
+      test <- mcnemar.test(tab, correct = TRUE)
+      results[[paste(a1, "vs", a2)]] <- list(
+        table = tab,
+        p.value = test$p.value,
+        statistic = test$statistic
+      )
+    }
+  }
+}
+
+# Print summary
+for (name in names(results)) {
+  cat("\n", name, "\n")
+  print(results[[name]]$table)
+  cat("p-value:", results[[name]]$p.value, "\n")
+}
+
+
+# Initialize empty matrix of NA values
+pval_matrix <- matrix(NA, nrow = length(assemblers), ncol = length(assemblers),
+                      dimnames = list(assemblers, assemblers))
+
+# Fill in upper triangle with p-values from results
+for (name in names(results)) {
+  parts <- unlist(strsplit(name, " vs "))
+  a1 <- parts[1]
+  a2 <- parts[2]
+  pval <- results[[name]]$p.value
+  pval_matrix[a1, a2] <- pval
+  pval_matrix[a2, a1] <- pval  # symmetric
+}
+
+# Fill diagonal with NA or 1
+diag(pval_matrix) <- NA
+
+# Convert to data frame
+pval_df <- as.data.frame(pval_matrix)
+print(pval_df)
+# optional save to CSV
+write.csv(pval_df, "mlst_McNemars_pairwise_with_correction.csv", row.names = TRUE)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 6. AMRFinder Plus ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
-amrfinder <- read.csv("for_publication/amrfinderplus_cleaned.csv")
+amrfinder <- read.csv("amrfinderplus_cleaned.csv")
 #View(amrfinder)
 # note for 'strand', negative strand "-" loaded as NA
 
@@ -1700,19 +2101,19 @@ amrfinder_elements_by_sample <- summarise_elements(amrfinder)
 amrfinder_summary <- summarise_metrics(amrfinder_elements_by_sample, 5:8)
 #View(amrfinder_summary)
 #optional save summary table
-#write.csv(amrfinder_summary, file = "amrfinder_summary.csv", row.names = FALSE)
+write.csv(amrfinder_summary, file = "amrfinder_summary.csv", row.names = FALSE)
 
 
 #~~~~~~~~~~~~~~~~~~~~#
 # * Stats Test ####
-#Stats test
-#Kruskall wallis test for oveall differneces beween assemblers 
-kruskal.test(AMR ~ assembler, data = amrfinder_elements_by_sample) 
-kruskal.test(STRESS ~ assembler, data = amrfinder_elements_by_sample) 
-kruskal.test(VIRULENCE ~ assembler, data = amrfinder_elements_by_sample) 
-kruskal.test(allgenes ~ assembler, data = amrfinder_elements_by_sample) 
 
+#Friedman's test for global difference in cont. variables for paired data across m groups.
+friedman.test(AMR ~ assembler | sample, data = amrfinder_elements_by_sample) # p=0.209
+friedman.test(STRESS ~ assembler | sample, data = amrfinder_elements_by_sample) #p-value = 0.6867
+friedman.test(VIRULENCE ~ assembler | sample, data = amrfinder_elements_by_sample) #p-value = 0.7362
+friedman.test(allgenes ~ assembler | sample, data = amrfinder_elements_by_sample) #p-value = 0.4024
 
+#~~~~~~~~~~~~~~~#
 #Pairwise Wilcoxon rank sum 
 amrfinder_elements_by_sample <- amrfinder_elements_by_sample |> arrange(sample)
 amrfinder_wilcox_result <- data.frame()
@@ -1724,15 +2125,149 @@ for (col_index in c(5:8)) {
 }
 #View(amrfinder_wilcox_result)
 #optional save wilcox results
-#write.csv(amrfinder_wilcox_result, file = "amrfinder_wilcox_result.csv")
+write.csv(amrfinder_wilcox_result, file = "amrfinder_wilcox_result.csv")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# Gene presence-absence concordance 
+amrfinder_wide_binary <- amrfinder |>
+  mutate(element_accession = paste0(`Element.symbol`, "|", `Closest.reference.accession`)) |>
+  group_by(assembler, sample, element_accession) |>
+  summarise(copy_num = n()) |>
+  mutate(presence = case_when(copy_num == 0 ~ 0, copy_num > 0 ~ 1)) |>
+  pivot_wider(id_cols = c(sample, element_accession), names_from = assembler, values_from = presence) |>
+  mutate(across(where(is.numeric), ~replace_na(., 0))) |>
+  mutate(across(where(is.numeric), ~ factor(.x, levels = c(0, 1)))) |>
+  arrange(desc(autocycler))  |>
+  ungroup()
+
+#subset into AMR, VIRULENCE and STRESS
+amr_gene_accessions <- amrfinder |>
+  mutate(element_accession = paste0(Element.symbol, "|", Closest.reference.accession)) |>
+  filter(Type == "AMR") 
+amr_gene_accessions <- as.list(amr_gene_accessions$element_accession)
+
+virulence_gene_accessions <- amrfinder |>
+  mutate(element_accession = paste0(Element.symbol, "|", Closest.reference.accession)) |>
+  filter(Type == "VIRULENCE") 
+virulence_gene_accessions <- as.list(virulence_gene_accessions$element_accession)
+
+
+stress_gene_accessions <- amrfinder |>
+  mutate(element_accession = paste0(Element.symbol, "|", Closest.reference.accession)) |>
+  filter(Type == "STRESS") 
+stress_gene_accessions <- as.list(stress_gene_accessions$element_accession)
+
+# subset tables
+amrfinder_wide_amr_binary <- amrfinder_wide_binary |> filter(element_accession %in% amr_gene_accessions)
+amrfinder_wide_virulence_binary <- amrfinder_wide_binary |> filter(element_accession %in% virulence_gene_accessions)
+amrfinder_wide_stress_binary <- amrfinder_wide_binary |> filter(element_accession %in% stress_gene_accessions)
+#nrow(amrfinder_wide_amr_binary)
+
+# Fleiss' kappa (all assemblers in one go)
+# All genes
+ratings <- amrfinder_wide_binary |> select(-c(sample, element_accession))
+fleiss_result <- kappam.fleiss(ratings)
+fleiss_result # p=0
+# AMR genes
+ratings <- amrfinder_wide_amr_binary |> select(-c(sample, element_accession))
+fleiss_result <- kappam.fleiss(ratings)
+fleiss_result # p=0
+# VIRULENCE genes
+ratings <- amrfinder_wide_virulence_binary |> select(-c(sample, element_accession))
+fleiss_result <- kappam.fleiss(ratings)
+fleiss_result # p=0
+# STRESS genes
+ratings <- amrfinder_wide_stress_binary |> select(-c(sample, element_accession))
+fleiss_result <- kappam.fleiss(ratings)
+fleiss_result # p=0
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# Pairwise McNemar's test
+assemblers <- colnames(amrfinder_wide_binary)[-c(1:2)]
+
+mcnemar_pairwise_function <- function(df) {
+  results <- list()
+  raw_pvals <- numeric()
+  combo_names <- character()
+  
+  # Loop through assembler combinations
+  for (i in 1:(length(assemblers)-1)) {
+    for (j in (i+1):length(assemblers)) {
+      a1 <- assemblers[i]
+      a2 <- assemblers[j]
+      
+      # Create 2x2 table of outcomes
+      tab <- table(df[[a1]], df[[a2]], useNA = "ifany")
+      
+      # Ensure it's 2x2 for McNemar
+      if (all(dim(tab) == c(2,2))) {
+        test <- mcnemar.test(tab, correct = TRUE)
+        results[[paste(a1, "vs", a2)]] <- list(
+          table = tab,
+          p.value = test$p.value,
+          statistic = test$statistic
+        )
+        raw_pvals <- c(raw_pvals, test$p.value)
+        combo_names <- c(combo_names, paste(a1, a2, sep = "_vs_"))
+      }
+    }
+  }
+  
+  # Apply Bonferroni correction
+  adj_pvals <- p.adjust(raw_pvals, method = "bonferroni")
+  
+  # Create p-value matrix
+  pval_matrix <- matrix(NA, nrow = length(assemblers), ncol = length(assemblers),
+                        dimnames = list(assemblers, assemblers))
+  
+  # Fill in symmetric positions with adjusted p-values
+  k <- 1
+  for (i in 1:(length(assemblers)-1)) {
+    for (j in (i+1):length(assemblers)) {
+      a1 <- assemblers[i]
+      a2 <- assemblers[j]
+      pval_matrix[a1, a2] <- adj_pvals[k]
+      pval_matrix[a2, a1] <- adj_pvals[k]
+      k <- k + 1
+    }
+  }
+  
+  diag(pval_matrix) <- NA
+  pval_df <- as.data.frame(pval_matrix)
+  
+  return(pval_df)
+}
+
+#All genes
+all_genes_binary_mcnemar <- mcnemar_pairwise_function(amrfinder_wide_binary)
+# Save to CSV
+write.csv(all_genes_binary_mcnemar, "amrfinder_all_genes_binary_mcnemars_pairwise_with_correction.csv", row.names = TRUE)
+
+#AMR genes
+AMR_binary_mcnemar <- mcnemar_pairwise_function(amrfinder_wide_amr_binary)
+# Save to CSV
+write.csv(AMR_binary_mcnemar, "amrfinder_AMR_binary_mcnemars_pairwise_with_correction.csv", row.names = TRUE)
+
+
+#VIRULENCE genes
+VIRULENCE_binary_mcnemar <- mcnemar_pairwise_function(amrfinder_wide_virulence_binary)
+# Save to CSV
+write.csv(VIRULENCE_binary_mcnemar, "amrfinder_VIRULENCE_binary_mcnemars_pairwise_with_correction.csv", row.names = TRUE)
+
+
+#Stress genes
+STRESS_binary_mcnemar <- mcnemar_pairwise_function(amrfinder_wide_stress_binary)
+# Save to CSV
+write.csv(STRESS_binary_mcnemar, "amrfinder_STRESS_binary_mcnemars_pairwise_with_correction.csv", row.names = TRUE)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 7. Bakta Output ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
-bakta_by_contig <- read.csv("for_publication/bakta_by_contig_cleaned.csv")
-View(bakta_by_contig)
+bakta_by_contig <- read.csv("bakta_by_contig_cleaned.csv")
+#View(bakta_by_contig)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Summary Stats ####
@@ -1757,8 +2292,8 @@ bakta_summary <- summarise_metrics(bakta_by_sample, 5)
 
 
 # * Stats Test ####
-#Kruskall-Walis overall test
-bakta_kruskall_result <- kruskal.test(CDS ~ assembler, data = bakta_by_sample)
+#Global Friedman's test
+friedman.test(CDS ~ assembler | sample, data = bakta_by_sample) # p<0.0001
 
 
 #Paiwise Wilcoxom signed rank test
@@ -1784,4 +2319,4 @@ final_wilcox_results <- bind_rows(wilcox_results_list)
 #View(final_wilcox_results)
 
 # optional save wilcox results optional
-# write.csv(final_wilcox_results, "bakta_cds_wilcoxon_results.csv", row.names = FALSE)
+write.csv(final_wilcox_results, "bakta_cds_wilcoxon_results.csv", row.names = FALSE)
