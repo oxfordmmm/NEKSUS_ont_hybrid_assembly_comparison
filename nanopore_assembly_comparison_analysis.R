@@ -89,6 +89,7 @@ library(irr)
 library(rlang)
 library(ggpubr)
 library(scales)
+library(magick)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 1. Raw Reads ####
@@ -490,15 +491,17 @@ chromosomes_plot_sup <- ggplot(contigs_per_sample_sup, aes(x = assembler, y = sa
     breaks = contigs_per_sample_sup$sample_id,
     labels = contigs_per_sample_sup$sample_id
   ) +
-  labs(x = "Assembler", y = "Sample", title = "No. Circularised Chromosomes by Assembler") +
+  labs(x = "Assembler", y = "Sample", 
+       #title = "No. Circularised Chromosomes by Assembler"
+       ) +
   theme_minimal() +
   theme(legend.position = "none",
-        axis.text.x = element_text(size = 12, face = "bold", angle = 0, hjust = 0.5, margin = margin(t=15)),  # Larger x-axis font
+        axis.text.x = element_text(size = 8, angle = 0, hjust = 0.5, margin = margin(t=0)),  # Larger x-axis font
         axis.text.y = element_text(size = 5),  # Smaller y-axis font
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 16, margin = margin(b=20, t = 20)),  # Centered title
-        plot.margin = margin(t = 10, r = 10, b = 10, l = 10), # Increase top margin
-        axis.title.x = element_text(size = 16, face = "bold", margin = margin(t = 10)),
-        axis.title.y = element_text(size = 16, face = "bold"),
+       # plot.title = element_text(hjust = 0.5, size = 10, margin = margin(b=20, t = 20)),  # Centered title
+        plot.margin = margin(t = 10, r = 0, b = 0, l = 0), # Increase top margin
+        axis.title.x = element_text(size = 10, margin = margin(t = 5)),
+        axis.title.y = element_text(size = 10),
         panel.grid.major.x = element_blank(),  # Remove major vertical grid lines
         panel.grid.minor.x = element_blank(),  # Remove minor vertical grid lines
         panel.grid.minor.y = element_blank()   # remove minor horizontal grid lines
@@ -511,12 +514,12 @@ chromosomes_plot_sup <- ggplot(contigs_per_sample_sup, aes(x = assembler, y = sa
   # Add brackets for assembler groups using annotate()
   annotate("segment", x = 0.8, xend = 3.2, y = -3, yend = -3, size = 0.8) +  # Bracket line for long-read assemblers
   annotate("segment", x = 3.8, xend = 6.2, y = -3, yend = -3, size = 0.8) +  # Bracket line for hybrid assemblers
-  annotate("text", x = 2, y = -5.8, label = "Long-read only", size = 5) +  
-  annotate("text", x = 5.0, y = -5.8, label = "Hybrid", size = 5)
+  annotate("text", x = 2, y = -5.8, label = "Long-read only", size = 4) +  
+  annotate("text", x = 5.0, y = -5.8, label = "Hybrid", size = 4)
 
 chromosomes_plot_sup
 #optional save
-ggsave("chromosomes_plot_sup.png", chromosomes_plot_sup, width = 6, height = 11, units = "in")
+ggsave("chromosomes_plot_sup.png", chromosomes_plot_sup, width = 6, height = 11, units = "in", dpi = 900)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -709,21 +712,21 @@ status_levels <- c("absent", "misassembled", "present")
 status_alpha <- rev(c(1.0, 0.5, 0.1))
 
 # Prep long format
-df_long <- plasmids_match_hybracter_mash %>%
-  select(plasmid_id, assembler_label, status_with_mash_0.025) %>%
+df_long <- plasmids_match_hybracter_mash |>
+  select(plasmid_id, assembler_label, status_with_mash_0.025) |>
   mutate(status_with_mash_0.025 = factor(status_with_mash_0.025, levels = status_levels))
 
 # Pivot to wide, then group by unique combinations
-heatmap_data_wide <- df_long %>%
-  pivot_wider(names_from = assembler_label, values_from = status_with_mash_0.025, values_fill = "absent") %>%
-  group_by(across(all_of(names(assembler_colors)))) %>%
-  summarise(count = n(), .groups = "drop") %>%
-  arrange(desc(count)) %>%
+heatmap_data_wide <- df_long |>
+  pivot_wider(names_from = assembler_label, values_from = status_with_mash_0.025, values_fill = "absent") |>
+  group_by(across(all_of(names(assembler_colors)))) |>
+  summarise(count = n(), .groups = "drop") |>
+  arrange(desc(count)) |>
   mutate(combo_id = row_number())  # New order: most common to least
 
 # Long format again for heatmap
-heatmap_long <- heatmap_data_wide %>%
-  pivot_longer(cols = names(assembler_colors), names_to = "assembler", values_to = "status") %>%
+heatmap_long <- heatmap_data_wide |>
+  pivot_longer(cols = names(assembler_colors), names_to = "assembler", values_to = "status") |>
   mutate(
     assembler = factor(assembler, levels = rev(names(assembler_colors))),  # Reverse for top-down
     combo_id = factor(combo_id, levels = unique((combo_id)))  # Keep left-to-right ordering
@@ -736,7 +739,7 @@ status_to_alpha <- function(status) {
 status_to_base_color <- function(assembler) {
   assembler_colors[[assembler]]
 }
-heatmap_long <- heatmap_long %>%
+heatmap_long <- heatmap_long |>
   mutate(
     fill_color = mapply(function(a, s) {
       adjustcolor(status_to_base_color(as.character(a)), alpha.f = status_to_alpha(s))
@@ -815,9 +818,10 @@ final_plot <- (blank_spacer + top_bar) / (left_bar + heatmap_plot) +
   plot_layout(widths = c(0.25, 1), heights = c(0.3, 1))
 
 print(final_plot)
+final_plot
 
 # optional save plot as .png
-ggsave("plasmids_upset_plot_hybracter_ref.png", final_plot, width = 10, height = 5, units = "in")
+ggsave("plasmids_upset_plot_hybracter_ref.png", final_plot, width = 10, height = 5, units = "in", dpi = 900)
 
 #~~~~~~~~~~~~~~~~~~~#
 #Frequency Polygon plot of contig length distributions
@@ -850,9 +854,11 @@ plot_contig_lengths <- function(df, title_lab) {
     #geom_histogram(binwidth = 0.1, alpha = 0.2, position = "identity") +
     geom_freqpoly(binwidth = 0.1, size =2, alpha = 0.9) +
     scale_color_manual(values = assembler_colors, name = "Assembler") +
-    labs(x= "Length (bp)", y = "No. Plasmids", title = title_lab) +
+    labs(x= "Length (bp)", y = "No. Plasmids", 
+         #title = title_lab
+         ) +
     scale_x_log10(breaks = c(3000, 10000, 30000, 100000, 300000), labels = scales::comma) +
-    theme_bw() +
+    theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5))
   
   return(contig_lengths)
@@ -862,9 +868,101 @@ plot_contig_lengths <- function(df, title_lab) {
 plasmids_match_hybracter_mash_present <- plasmids_match_hybracter_mash |> filter(status == "present")
 
 hybracter_ref_plasmid_lengths_plot <- plot_contig_lengths(plasmids_match_hybracter_mash_present, "Freq Polygon of Contig lengths of Hybracter (hybrid) ref plasmids")
+hybracter_ref_plasmid_lengths_plot 
 #optional save as .png
-ggsave("freq_polygon_hybracter_ref_mash_match_plasmids.png", hybracter_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in")
+ggsave("freq_polygon_hybracter_ref_mash_match_plasmids.png", hybracter_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in", dpi = 900)
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# * * Plot all 3 above plots together for Figure 2 ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# Ensure Arial or Aptos is used
+label_family <- "Arial"
+
+# Add labels directly inside each plot
+a_labeled <- chromosomes_plot_sup +
+  labs(tag = "a)") +
+  theme(
+    plot.tag = element_text(
+      size = 18, family = label_family, face = "bold",
+      hjust = 0, vjust = 1
+    ),
+    plot.margin = margin(10,10,10,10)
+  )
+
+b_labeled <- wrap_plots(final_plot) +
+  labs(tag = "b)") +
+  theme(
+    plot.tag = element_text(
+      size = 18, family = label_family, face = "bold",
+      hjust = 0, vjust = 1
+    ),
+    plot.margin = margin(10,10,10,10)
+  )
+
+
+c_labeled <- hybracter_ref_plasmid_lengths_plot +
+  labs(tag = "c)") +
+  theme(
+    plot.tag = element_text(
+      size = 18, family = label_family, face = "bold",
+      hjust = 0, vjust = 1
+    ),
+    plot.margin = margin(50,50,50,50)
+  )
+
+
+
+# Layout:
+combined_plot <- (a_labeled | c_labeled) / b_labeled +
+  plot_layout(heights = c(10, 5), widths = c(5, 5)) &
+  theme(
+    plot.tag.position = c(0, 1), # top left label
+    plot.background  = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA)
+  )
+combined_plot
+
+# Save high-resolution figure as PNG
+ggsave(filename = "figure_2_nanopore_assembly_comparison_mgen.png",
+  plot = combined_plot, width = 13, height= 14, units = "in", dpi= 1200)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# use image magick to paste b) label on
+# 1. Read image and check size
+img <- image_read( "figure_2_nanopore_assembly_comparison_mgen.png")
+info <- image_info(img)
+width_px  <- info$width
+height_px <- info$height
+
+# 2. Choose position: halfway down left margin
+x_offset <- 300   
+y_pos <- 11000
+
+# We'll use NorthWest gravity and provide absolute pixel offsets from top-left
+# The location string is "+x+y" (x = x_offset, y = y_pos)
+location_str <- paste0("+", x_offset, "+", y_pos)
+
+# 3. Choose font and size (scale with image height)
+size_px <- round(height_px * 0.02)  # 5% of image height (adjust: 0.03-0.08 typical)
+font_to_use <- "Arial" 
+
+# 4. Optional Annotate with a white "halo" then black text centered at the requested absolute coordinate.
+#halo_size <- round(size_px * 1.12)  # halo a bit larger
+label_text <- "b)"
+
+img2 <- img |>
+  image_annotate(text = label_text,
+                 gravity = "NorthWest",
+                 location = location_str,
+                 size = size_px,
+                 font = font_to_use,
+                 color = "black",
+                 weight = 700)
+
+# 5. Save result as PNG
+image_write(img2, path = "figure_2_nanopore_assembly_comparison_mgen_labeled.png", format = "png")
+# Save as PDF
+image_write(img2, path = "figure_2_nanopore_assembly_comparison_mgen_labeled.pdf", format = "pdf")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 3b. Plasmids- Manually-Currated reference ####
@@ -1309,7 +1407,6 @@ match_set_check <- all_plasmids_status_true_completed |>
 
 # optional save completed table
 write.csv(all_plasmids_status_true_completed, "plasmids_match_manual_mash.csv", row.names = FALSE)
-write.csv(all_plasmids_status_true_completed, "for_publication/plasmids_match_manual_mash.csv", row.names = FALSE)
 #all_pasmilds_status_true_completed <- read.csv("plasmids_match_manual_mash.csv")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -1392,7 +1489,7 @@ for (i in 1:(length(assemblers)-1)) {
     a2 <- assemblers[j]
     
     # Create 2x2 table of outcomes
-    tab <- table(plasmids_manual_match_wide[[a1]], plasmids_manual_match_wide[[a2]], useNA = "ifany")
+    tab <- table(plasmids_match_manual_wide[[a1]], plasmids_match_manual_wide[[a2]], useNA = "ifany")
     
     # Ensure it's 2x2 for McNemar
     if (all(dim(tab) == c(2,2))) {
@@ -1439,7 +1536,9 @@ write.csv(pval_df, "plasmids_match_manual_McNemars_pairwise_with_correction.csv"
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-# * Plots, using less detailed status ####
+# * Plot ####
+#using less detailed status
+
 # load packages if not already loaded
 #library(tidyr)
 #library(ggplot2)
@@ -1471,22 +1570,22 @@ status_levels <- c("absent", "misassembled", "present")
 status_alpha <- rev(c(1.0, 0.5, 0.1))
 
 # Prep long format
-df_long <- all_plasmids_status_true_completed %>%
+df_long <- all_plasmids_status_true_completed |>
   mutate(assembler_label = recode(assembler, !!!assembler_labels)) |>
-  select(match_set_id, assembler_label, status_simple) %>%
+  select(match_set_id, assembler_label, status_simple) |>
   mutate(status_simple = factor(status_simple, levels = status_levels))
 
 # Pivot to wide, then group by unique combinations
-heatmap_data_wide <- df_long %>%
-  pivot_wider(names_from = assembler_label, values_from = status_simple, values_fill = "absent") %>%
-  group_by(across(all_of(names(assembler_colors)))) %>%
-  summarise(count = n(), .groups = "drop") %>%
-  arrange(desc(count)) %>%
+heatmap_data_wide <- df_long |>
+  pivot_wider(names_from = assembler_label, values_from = status_simple, values_fill = "absent") |>
+  group_by(across(all_of(names(assembler_colors)))) |>
+  summarise(count = n(), .groups = "drop") |>
+  arrange(desc(count)) |>
   mutate(combo_id = row_number())  # New order: most common to least
 
 # Long format again for heatmap
-heatmap_long <- heatmap_data_wide %>%
-  pivot_longer(cols = names(assembler_colors), names_to = "assembler", values_to = "status") %>%
+heatmap_long <- heatmap_data_wide |>
+  pivot_longer(cols = names(assembler_colors), names_to = "assembler", values_to = "status") |>
   mutate(
     assembler = factor(assembler, levels = rev(names(assembler_colors))),  # Reverse for top-down
     combo_id = factor(combo_id, levels = unique((combo_id)))  # Keep left-to-right ordering
@@ -1499,7 +1598,7 @@ status_to_alpha <- function(status) {
 status_to_base_color <- function(assembler) {
   assembler_colors[[assembler]]
 }
-heatmap_long <- heatmap_long %>%
+heatmap_long <- heatmap_long |>
   mutate(
     fill_color = mapply(function(a, s) {
       adjustcolor(status_to_base_color(as.character(a)), alpha.f = status_to_alpha(s))
@@ -1524,7 +1623,7 @@ heatmap_plot <- ggplot(heatmap_long, aes(x = combo_id, y = assembler)) +
 # Top bar plot: count of plasmids per combination
 top_bar <- ggplot(heatmap_data_wide, aes(x = factor(combo_id, levels = combo_id), y = count)) +
   geom_col(fill = "grey40") +
-  geom_text(aes(label = count), vjust = -0.2, size = 3.2) + 
+  geom_text(aes(label = count), vjust = -0.2, size = 2.5) + 
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_continuous(expand = expansion(mult = c(0.1, 0.2))) +
   theme_minimal(base_size = 12) +
@@ -1581,7 +1680,6 @@ final_plot
 
 #optional save
 ggsave("plasmids_mash_0_025_match_manually_curated.png", final_plot, width = 12, height = 6, units = "in")
-ggsave("for_publication/plasmids_mash_0_025_match_manually_curated.png", final_plot, width = 12, height = 6, units = "in")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -1594,8 +1692,9 @@ all_plasmids_status_true_completed_present <- all_plasmids_status_true_completed
          size_qry = size)
 
 manual_ref_plasmid_lengths_plot <- plot_contig_lengths(all_plasmids_status_true_completed_present, "Freq Polygon of Contig lengths of Manually-Curated ref plasmids")
+manual_ref_plasmid_lengths_plot
 #optional save
-#
+
 ggsave("freq_polygon_manually-curated_ref_mash_match_plasmids.png", manual_ref_plasmid_lengths_plot, height = 5, width = 7, units = "in")
 
 
@@ -1604,7 +1703,7 @@ ggsave("freq_polygon_manually-curated_ref_mash_match_plasmids.png", manual_ref_p
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # * Load data ####
 # load snp, indel and QV data
-assembly_accuracy <- read.csv("for_publication/assembly_nucleotide_accuracy_cleaned.csv")
+assembly_accuracy <- read.csv("assembly_nucleotide_accuracy_cleaned.csv")
 #View(assembly_accuracy)
 
 
@@ -1661,7 +1760,7 @@ friedman.test(Coding_Density ~ assembler | sample, data = checkm2) # p<0.0001
 friedman.test(Average_Gene_Length ~ assembler | sample, data = checkm2) # p<0.0001
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-#Paiwise Wilcoxom signed rank test
+#Paiwise Wilcoxon signed rank test
 assembly_accuracy <- assembly_accuracy |> arrange(sample)
 metrics_accuracy <- c("snps_per_Mb", "indels_per_Mb", "consensus_qv_before_polishing")
 
@@ -1693,8 +1792,8 @@ metrics_checkm2 <- c("Coding_Density", "Average_Gene_Length")
 wilcox_results_list <- list()
 for (metric in metrics_checkm2) {
   cat("\nWilcoxon Signed-Rank Test for:", metric, "\n")
-  wilcox_results <- pairwise.wilcox.test(x = checkm2_results[[metric]], 
-                                         g = checkm2_results$assembler, 
+  wilcox_results <- pairwise.wilcox.test(x = checkm2[[metric]], 
+                                         g = checkm2$assembler, 
                                          paired = TRUE, 
                                          p.adjust.method = "bonferroni")
   print(wilcox_results)
@@ -1713,8 +1812,7 @@ write.csv(final_wilcox_results, "checkm2_pairwise_wilcoxon_results.csv", row.nam
 #~~~~~~~~~~~~~~~~~~~#
 # * Plots ####
 # plot function for any metric
-plot_metric <- function(data, metric, metric_label, title_lab, scaling_for_labels = 0.9) {
-  
+plot_metric <- function(data, metric, metric_label, title_lab, scaling_for_labels = 1) {
   
   # Define colors based on "assembler"
   assembler_colors <- c(
@@ -1745,14 +1843,14 @@ plot_metric <- function(data, metric, metric_label, title_lab, scaling_for_label
   # Define x-axis group labels and horizontal lines
   assembler_labels <- data.frame(
     x = c(2.5, 6.5, 9.3, 12),  # Midpoints of each group
-    y = min(data[[metric]], na.rm = TRUE) * scaling_for_labels,  # Position below lowest value
+    y =-0.005 * max(data[[metric]], na.rm = TRUE) * scaling_for_labels,  # Position below lowest value
     label = c("Autocycler", "Flye", "Hybracter", "Unicycler")
   )
   
   assembler_lines <- data.frame(
     x_start = c(0.7, 4.7, 8.7, 10.7),
     x_end = c(4.3, 8.3, 10.3, 12.3),
-    y = min(data[[metric]], na.rm = TRUE) * scaling_for_labels  # Just below x-axis
+    y = -0.005 * max(data[[metric]], na.rm = TRUE) * scaling_for_labels  # 5% below max for spacing
     # change to 0.9 for pypolca plots to have some more distance
   )
   
@@ -1762,7 +1860,9 @@ plot_metric <- function(data, metric, metric_label, title_lab, scaling_for_label
     geom_point(aes(shape = polishing, fill = assembler), 
                size = 1.5, stroke = 0.5, color = "black", 
                alpha = 0.8, position = position_jitter(width = 0.1, height = 0)) +  
-    labs(x = "", y = metric_label , title = title_lab) +
+    labs(x = "", y = metric_label , 
+         #title = title_lab
+         ) +
     scale_fill_manual(values = assembler_colors, guide = "none") +  # Hide fill legend
     scale_shape_manual(name = "Polishing", values = polishing_shapes) +  # Keep only shape legend
     scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
@@ -1785,25 +1885,27 @@ plot_metric <- function(data, metric, metric_label, title_lab, scaling_for_label
 
 # Call plot function
 #Assembly Accuracy metrics
-# SNPs / Mb
-plot_accuracy <- plot_metric(assembly_accuracy, "snps_per_Mb" , "SNPs/1,000,000 bp" ,  "Substitution errors corrected by Illumina short-read alignment by Assembler (sup)", 0.9)
+# SNVs / Mb
+snv_plot_accuracy <- plot_metric(assembly_accuracy, "snps_per_Mb" , "SNVs/1,000,000 bp" ,  "Substitution errors corrected by Illumina short-read alignment by Assembler (sup)", 1)
+snv_plot_accuracy
 #optional save
-ggsave("assembly_accuracy_substitutions_perMb_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
+ggsave("assembly_accuracy_substitutions_perMb_plot.png", snv_plot_accuracy, width = 7.5, height = 5, units = "in")
 
 #Indels / Mb
-plot_accuracy <- plot_metric(assembly_accuracy, "indels_per_Mb" , "Indels/1,000,000 bp" , "Insertions errors corrected by Illumina short-read alignment by Assembler (sup)", 0.9)
+indel_plot_accuracy <- plot_metric(assembly_accuracy, "indels_per_Mb" , "Indels/1,000,000 bp" , "Insertions errors corrected by Illumina short-read alignment by Assembler (sup)", 1)
+indel_plot_accuracy
 #optional save
-ggsave("assembly_accuracy_indels_perMb_plot.png", plot_accuracy, width = 7.5 , height = 5, units = "in")
+ggsave("assembly_accuracy_indels_perMb_plot.png", indel_plot_accuracy, width = 7.5 , height = 5, units = "in")
 
 #QV
-plot_accuracy <- plot_metric(assembly_accuracy, "consensus_qv_before_polishing" , "Quality Value" , "Assembly Quality Value Before Short-read Alignment Error Correction by Assembler (sup)", 0.9)
+qv_plot_accuracy <- plot_metric(assembly_accuracy, "consensus_qv_before_polishing" , "Quality Value" , "Assembly Quality Value Before Short-read Alignment Error Correction by Assembler (sup)", -80)
+qv_plot_accuracy
 #optional save
-ggsave("assembly_accuracy_QV_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
+ggsave("assembly_accuracy_QV_plot.png", qv_plot_accuracy, width = 7.5, height = 5, units = "in")
 
 
 #CheckM2 metrics- plot without the pseudo-log scale
 plot_metric_neutral_scale <- function(data, metric, metric_label, title_lab, scaling_for_labels = 0.9) {
-  
   
   # Define colors based on "assembler"
   assembler_colors <- c(
@@ -1851,7 +1953,9 @@ plot_metric_neutral_scale <- function(data, metric, metric_label, title_lab, sca
     geom_point(aes(shape = polishing, fill = assembler), 
                size = 1.5, stroke = 0.5, color = "black", 
                alpha = 0.8, position = position_jitter(width = 0.1, height = 0)) +  
-    labs(x = "", y = metric_label , title = title_lab) +
+    labs(x = "", y = metric_label , 
+         #title = title_lab
+         ) +
     scale_fill_manual(values = assembler_colors, guide = "none") +  # Hide fill legend
     scale_shape_manual(name = "Polishing", values = polishing_shapes) +  # Keep only shape legend
     scale_y_continuous() +
@@ -1873,10 +1977,44 @@ plot_metric_neutral_scale <- function(data, metric, metric_label, title_lab, sca
 }
 
 #Avergae Gene Length
-plot_accuracy <- plot_metric_neutral_scale(checkm2, "Average_Gene_Length" , "Average Gene Length" , "Average Gene Length by Assembler- Polisher Combination", 0.999)
+agl_plot_accuracy <- plot_metric_neutral_scale(checkm2, "Average_Gene_Length" , "Average Gene Length" , "Average Gene Length by Assembler- Polisher Combination", 0.999)
+agl_plot_accuracy
 #optional save
-ggsave("for_publication/checkm2_average_gene_length_plot.png", plot_accuracy, width = 7.5, height = 5, units = "in")
+ggsave("checkm2_average_gene_length_plot.png", agl_plot_accuracy, width = 7.5, height = 5, units = "in")
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# combine 4 plots into figure 3
+# Keep legend in the first plot, remove from the others
+snv_with_legend   <- snv_plot_accuracy                 # keep legend here
+indel_no_legend   <- indel_plot_accuracy + theme(legend.position = "none")
+qv_no_legend      <- qv_plot_accuracy    + theme(legend.position = "none")
+agl_no_legend     <- agl_plot_accuracy   + theme(legend.position = "none")
+
+# Combine plots in 2x2 layout with labels and a single shared legend
+combined_accuracy_plot <- (snv_with_legend | indel_no_legend) /
+  (qv_no_legend  | agl_no_legend) +
+  plot_annotation(
+    tag_levels = 'a',         # generate a, b, c, d
+    tag_prefix = "",          # no prefix before tag
+    tag_suffix = ")",
+    # makes tags "a)" "b)" ...
+    theme = theme(
+      plot.tag = element_text(face = "bold", size = 16, family = "Arial")
+    )
+  ) +
+  plot_layout(guides = "collect") &     # collect legends into one
+  theme(legend.position = "right")     
+
+# Show
+combined_accuracy_plot
+
+# Save high-quality square PNG
+ggsave(filename = "figure_3_nanopore_assembly_comparison_mgen.png",
+  plot = combined_accuracy_plot,width = 13, height = 10, units = "in", dpi = 1200)
+
+# Save high-quality square PDF
+ggsave(filename = "figure_3_nanopore_assembly_comparison_mgen.pdf",
+  plot = combined_accuracy_plot,width = 13, height = 10, units = "in", dpi = 1200)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 5. MLST ####
@@ -2261,7 +2399,118 @@ STRESS_binary_mcnemar <- mcnemar_pairwise_function(amrfinder_wide_stress_binary)
 # Save to CSV
 write.csv(STRESS_binary_mcnemar, "amrfinder_STRESS_binary_mcnemars_pairwise_with_correction.csv", row.names = TRUE)
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# * Mean AMR, VIRULENCE or STRESS gene length ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# Produce per sample summary 
+# all gene types considered together
+amrfinder_per_sample_gene_length <- amrfinder |>
+  group_by(assembler, sample, polishing, assembler_family) |>
+  summarise(
+    mean_alignment_length = mean(Alignment.length, na.rm = TRUE),
+    mean_percent_coverage = mean(X..Coverage.of.reference, na.rm = TRUE),
+    mean_percent_identity = mean(X..Identity.to.reference, na.rm = TRUE)
+  )
+#View(amrfinder_per_sample_gene_length)
+# summarise per-sample means
+amrfinder_per_sample_gene_length_summary <- summarise_metrics(amrfinder_per_sample_gene_length, 5:7)
+#View(amrfinder_per_sample_gene_length_summary)
+#save
+write.csv(amrfinder_per_sample_gene_length_summary, "amrfinder_per_sample_gene_length_summary.csv", row.names = FALSE)
 
+# stratified by gene Type
+amrfinder_per_sample_gene_length_by_type <- amrfinder |>
+  group_by(assembler, sample, polishing, assembler_family, Type) |>
+  summarise(
+    mean_alignment_length = mean(Alignment.length, na.rm = TRUE),
+    mean_percent_coverage = mean(X..Coverage.of.reference, na.rm = TRUE),
+    mean_percent_identity = mean(X..Identity.to.reference, na.rm = TRUE)
+  ) |>
+  pivot_wider(names_from = Type, values_from = c(mean_alignment_length, mean_percent_coverage, mean_percent_identity), names_sep = "_")
+#View(amrfinder_per_sample_gene_length_by_type)
+# summarise per-sample means
+amrfinder_per_sample_gene_length_by_type_summary <- summarise_metrics(amrfinder_per_sample_gene_length_by_type, 5:13)
+#View(amrfinder_per_sample_gene_length_by_type_summary)
+# save
+write.csv(amrfinder_per_sample_gene_length_by_type_summary, "amrfinder_per_sample_gene_length_by_type_summary.csv", row.names = FALSE)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# * Stats Test ####
+# paired as comparing between samples
+# Global Friedman's test for difference in cont. variables for paired data across m groups
+metrics <- c("mean_alignment_length", "mean_percent_coverage", "mean_percent_identity")
+
+friedman.test(mean_alignment_length ~ assembler | sample, data = amrfinder_per_sample_gene_length) # p-value = 1.851e-05
+friedman.test(mean_percent_coverage ~ assembler | sample, data = amrfinder_per_sample_gene_length) # p-value = 0.9283
+friedman.test(mean_percent_identity ~ assembler | sample, data = amrfinder_per_sample_gene_length) # p-value = 0.1373
+
+# check for individual gene metrics
+# AMR
+friedman.test(mean_alignment_length_AMR ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.003485
+friedman.test(mean_percent_coverage_AMR ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.9493
+friedman.test(mean_percent_identity_AMR ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.06126
+
+# VIRUELNCE - mean alignment length and coverage both significant
+friedman.test(mean_alignment_length_VIRULENCE ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.0003442
+friedman.test(mean_percent_coverage_VIRULENCE ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.02627
+friedman.test(mean_percent_identity_VIRULENCE ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.591
+
+# STRESS - uninformative as no evidence of difference
+friedman.test(mean_alignment_length_STRESS ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.2942
+friedman.test(mean_percent_coverage_STRESS ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.8233
+friedman.test(mean_percent_identity_STRESS ~ assembler | sample, data = amrfinder_per_sample_gene_length_by_type) # 0.9075
+
+# => mean alignment length (per sample) stratified by gene Type most informative to look at
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#Paiwise Wilcoxon signed rank test
+amrfinder_per_sample_gene_length <- amrfinder_per_sample_gene_length |> arrange(sample)
+amrfinder_per_sample_gene_length_by_type <- amrfinder_per_sample_gene_length_by_type |> arrange(sample)
+metrics_gene_length <- c("mean_alignment_length_AMR", "mean_alignment_length_VIRULENCE", "mean_alignment_length_STRESS")
+
+wilcox_results_list <- list()
+for (metric in metrics_gene_length) {
+  cat("\nWilcoxon Signed-Rank Test for:", metric, "\n")
+  wilcox_results <- pairwise.wilcox.test(x = amrfinder_per_sample_gene_length_by_type[[metric]], 
+                                         g = amrfinder_per_sample_gene_length_by_type$assembler, 
+                                         paired = TRUE, 
+                                         p.adjust.method = "bonferroni")
+  print(wilcox_results)
+  # Convert results to a tidy data frame
+  wilcox_df <- as.data.frame(wilcox_results$p.value) 
+  # Store in the list
+  wilcox_results_list[[metric]] <- wilcox_df
+}
+
+# Combine all results into a single data frame and save
+final_wilcox_results <- bind_rows(wilcox_results_list)
+#View(final_wilcox_results)
+
+# save wilcox results optional
+write.csv(final_wilcox_results, "amrfinder_gene_length_wilcoxon_results.csv", row.names = FALSE)
+
+# all p~1 even without bonferroni correction, so no evidence of pairwise differences
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+# Plot ####
+
+#Mean AMR alignment length
+AMR_agl_plot_accuracy <- plot_metric_neutral_scale(amrfinder_per_sample_gene_length_by_type, "mean_alignment_length_AMR" , "Mean AMR Gene Alignment Length" , "Mean Alignment length of AMRFinder Plus genes by Assembler- Polisher Combination", 0.999)
+AMR_agl_plot_accuracy
+#optional save
+ggsave("mean_AMR_gene_alignment_length_plot.png", AMR_agl_plot_accuracy, width = 7.5, height = 5, units = "in")
+
+#Mean VIRULENCE alignment length
+VIRULENCE_agl_plot_accuracy <- plot_metric_neutral_scale(amrfinder_per_sample_gene_length_by_type, "mean_alignment_length_VIRULENCE" , "Mean VIRULENCE Gene Alignment Length" , "Mean Alignment length of AMRFinder Plus genes by Assembler- Polisher Combination", 0.999)
+VIRULENCE_agl_plot_accuracy
+#optional save
+ggsave("mean_VIRULENCE_gene_alignment_length_plot.png", VIRULENCE_agl_plot_accuracy, width = 7.5, height = 5, units = "in")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 # 7. Bakta Output ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
